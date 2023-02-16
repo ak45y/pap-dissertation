@@ -1,0 +1,173 @@
+---
+title: "create-variables-of-interest for temperature data"
+format: html
+editor: visual
+---
+
+####### This script takes the dataframe created in the previous data-processing file (1.1) that extracted daily climate data for each PSU and then creates climate related variables - first for each day and the summarizes that at the PSU level. 
+
+# load-packages
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(summarytools)
+```
+
+# Create variable for year of temperature
+
+```{r}
+df_ana <- df_psu_tmax %>% 
+  # create outcome variables
+  ## day where temperature was greater than 35F
+  mutate(hotday_35 = ifelse(max_temp > 35, 1, 0)) %>% 
+  ## Day where the temperature was greater than the 95th percentile for that PSU over the last n years
+  ### First calculate the cutoff temperature for each PSU
+  group_by(psu) %>% 
+  mutate(cutoff_hot_95 = quantile(max_temp, probs = 0.95, na.rm = T)) %>% 
+  ### Identify days when the temperature was higher than the relative cutoff
+  mutate(hotday_95 = ifelse(max_temp >=  cutoff_hot_95, 1, 0)) %>% 
+  ## Identify days when it was either more than 35 or more than 95
+  mutate(hotday_35_95 = ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)) %>% 
+  ## Identify days when it was both 
+  mutate(hotday_both = ifelse(hotday_35 == 1 & hotday_95 == 1, 1, 0)) %>% 
+  # extract year from the date variable
+  mutate(year = format(as.Date(date), format = "%Y")) 
+
+# head(df_ana)
+# dim(df_ana)
+```
+
+## Outcome Variables
+
+```{r}
+df_ana <- df_ana %>% 
+  # day where temperature was greater than 35F
+  mutate(hotday_35 = ifelse(max_temp > 35, 1, 0)) %>% 
+  # Day where the temperature was greater than the 95th percentile for that PSU over the last n years
+  ## First calculate the cutoff temperature for each PSU
+  group_by(psu) %>% 
+  mutate(cutoff_hot_95 = quantile(max_temp, probs = 0.95, na.rm = T)) %>% 
+  ## Identify days when the temperature was higher than the relative cutoff
+  mutate(hotday_95 = ifelse(max_temp >=  cutoff_hot_95, 1, 0)) %>% 
+  ## Identify days when it was either more than 35 or more than 95
+  mutate(hotday_35_95 = ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)) %>% 
+  ## Identify days when it was both 
+  mutate(hotday_both = ifelse(hotday_35 == 1 & hotday_95 == 1, 1, 0)) 
+```
+
+## Filter dataset for the year of interest
+
+```{r}
+df_ana_2022 <- df_ana %>% 
+  filter(year == "2022")
+dim(df_ana)
+dput(names(df_ana))
+```
+
+## Summarize the outcome and predictor variables
+
+```{r}
+df_psu_hotdays <- df_ana_2022 %>% 
+  group_by(psu, .drop = F) %>% 
+  summarise(
+            # Outcome Variables
+            num_hot_days_35 = sum(hotday_35),
+            num_hot_days_95 = sum(hotday_95),
+            num_hot_days_35_95 = sum(hotday_35_95),
+            num_hot_days_both = sum(hotday_both),
+            long = mean(long),
+            lat = mean(lat),
+            state = first(state_name), 
+            district = first(district), 
+            rural = first(rural)) %>%  
+  # Arrange variables
+  dplyr::select(num_hot_days_35, num_hot_days_95, num_hot_days_35_95,num_hot_days_both, everything())
+  
+  
+head(df_psu_hotdays)
+# dim(df_psu_hotdays)
+# freq(df_psu_hotdays$num_hot_days_35_cat)
+# freq(df_psu_hotdays$num_hot_days_95_cat)
+
+```
+
+## Create categories for number of hot days
+
+### Num hotdays - 35
+```{r}
+df_psu_hotdays <- df_psu_hotdays %>% 
+  mutate(num_hot_days_35_cat = 
+           case_when(
+              num_hot_days_35 == 0 ~ "None",
+              num_hot_days_35 > 0 & num_hot_days_35 < 31 ~ "31 days or less",
+              num_hot_days_35 > 30 & num_hot_days_35 < 91 ~ "31-90 days",
+              num_hot_days_35 > 90 & num_hot_days_35 < 121 ~ "91-120 days",
+              num_hot_days_35 > 120  ~ "More than 120 days")) %>% 
+  mutate(num_hot_days_35_cat = fct_relevel(num_hot_days_35_cat, 
+                                              "None", "31 days or less", 
+                                              "31-90 days", "91-120 days", 
+                                              "More than 120 days"))  
+
+freq(df_psu_hotdays$num_hot_days_35_cat)
+# hist(df_psu_hotdays$num_hot_days_35)
+```
+
+### Num hotdays - 95
+```{r}
+df_psu_hotdays <- df_psu_hotdays %>% 
+  mutate(num_hot_days_95_cat = 
+           case_when(
+              num_hot_days_95 == 0 ~ "None",
+              num_hot_days_95 > 0 & num_hot_days_95 < 11 ~ "10 days or less",
+              num_hot_days_95 > 10 & num_hot_days_95 < 21 ~ "11-20 days",
+              num_hot_days_95 > 20 & num_hot_days_95 < 31 ~ "21-30 days",
+              num_hot_days_95 > 30  ~ "More than 30 days")) %>% 
+  mutate(num_hot_days_95_cat = fct_relevel(num_hot_days_95_cat, 
+                                              "None", "10 days or less", 
+                                              "11-20 days", "21-30 days", 
+                                              "More than 30 days"))  
+freq(df_psu_hotdays$num_hot_days_95_cat)
+```
+
+
+### Num hotdays - both
+```{r}
+df_psu_hotdays <- df_psu_hotdays %>% 
+  mutate(num_hot_days_both_cat = 
+           case_when(
+              num_hot_days_both == 0 ~ "None",
+              num_hot_days_both > 0 & num_hot_days_both < 11 ~ "10 days or less",
+              num_hot_days_both > 10 & num_hot_days_both < 21 ~ "11-20 days",
+              num_hot_days_both > 20 & num_hot_days_both < 31 ~ "21-30 days",
+              num_hot_days_both > 30  ~ "More than 30 days")) %>% 
+  mutate(num_hot_days_both_cat = fct_relevel(num_hot_days_both_cat, 
+                                              "None", "10 days or less", 
+                                              "11-20 days", "21-30 days", 
+                                              "More than 30 days"))  
+freq(df_psu_hotdays$num_hot_days_both_cat)
+```
+
+
+# Save your work
+```{r}
+ls()
+```
+
+
+```{r}
+rm(list=setdiff(ls(), c("df_psu_hotdays")))
+```
+
+
+## Save Image
+```{r}
+system.time(
+  save.image(file='1.2-psu-hotdays-temp-outcomes-summarized.RData')
+)
+```
+
+
+## Save CSV
+```{r}
+write.csv(df_psu_hotdays, "./data/psu_level_heat_outcomes.csv")
+```

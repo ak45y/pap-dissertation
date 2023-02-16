@@ -1,0 +1,66 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+library(broom)
+```
+
+# scale outcome variables
+```{r}
+df_ana <- df_ana %>% 
+  mutate(num_hot_days_both_scaled = num_hot_days_both/10) %>% 
+  mutate(num_hot_days_35_scaled = num_hot_days_35/10) %>% 
+  mutate(num_hot_days_95_scaled = num_hot_days_95/10)
+
+```
+
+
+```{r}
+fmla_hotday_both_full <- as.formula(num_hot_days_both_scaled ~ prop_richest +
+                             prop_general + prop_hindu + prop_edu_higher + rural)
+
+fmla_hotday_35_full <- as.formula(num_hot_days_35_scaled ~ prop_richest + 
+                             prop_general + prop_hindu + prop_edu_higher + rural)
+
+fmla_hotday_95_full <- as.formula(num_hot_days_95_scaled ~ prop_richest + 
+                             prop_general + prop_hindu + prop_edu_higher + rural)
+
+```
+
+```{r}
+model_1 <- lm(fmla_hotday_both_full, data = df_ana)
+model_2 <- lm(fmla_hotday_35_full, data = df_ana)
+model_3 <- lm(fmla_hotday_95_full, data = df_ana)
+```
+
+```{r}
+df_ana %>% 
+  group_by(rural) %>% 
+  summarize(avg_num_hot_days_35 = mean(num_hot_days_35), 
+            avg_num_hot_days_95 = mean(num_hot_days_95),
+            avg_num_hot_days_both = mean(num_hot_days_both))
+```
+
+
+```{r}
+df_model1 <- tidy(model_1, conf.int = T)
+write.csv(df_model1, "./data/model.csv")
+```
+
+
+```{r}
+df_model2 <- tidy(model_2, conf.int = T)
+write.csv(df_model2, "./data/model-2.csv")
+```
+
+```{r}
+df_model3 <- tidy(model_3, conf.int = T)
+write.csv(df_model3, "./data/model-3.csv")
+```
+
+
+```{r}
+tidy(model_1, conf.int = T)
+```

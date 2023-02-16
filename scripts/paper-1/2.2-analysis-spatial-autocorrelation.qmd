@@ -1,0 +1,128 @@
+---
+title: "spatial-autocorrelation"
+format: html
+editor: visual
+---
+
+# load packages
+
+```{r}
+library(spdep)
+```
+
+# Spatial Auto Correlation on Polygon Data
+
+## Now find adjacent polygons
+```{r}
+w <- poly2nb(ind_adm_2_spdf, row.names = ind_adm_2_spdf$NAME_2)
+class(w)
+```
+
+## explore the structure of neighbors
+```{r}
+summary(w)
+```
+
+
+### Did not WORK
+## Plot link between polygons
+```{r}
+plot(ind_adm_2_spdf, "col = 'gray", border = 'blue', lwd = 1)
+plot(w, xy, col = 'red', lwd = 1, add = T)
+```
+## Create spatial weightes matrix
+```{r}
+ww <- nb2listw(w, style = 'B', zero.policy = T)
+print.listw(ww, zero.policy = TRUE)
+```
+## Estimate Morans I and K
+```{r}
+moran(ind_adm_2$avg_temp, ww, n = length(ww$neighbours), S0=Szero(ww), zero.policy = TRUE)
+```
+
+## Test for significance - using monte carlo simulation
+
+```{r}
+MC <- moran.mc(ind_adm_2$avg_temp, ww, nsim = 99, zero.policy = T)
+plot(MC)
+```
+
+# Spatial Auto Correlation on Point Data
+
+## Approach - 1: 
+### Generate a distance matrix
+```{r}
+psu_dist <- as.matrix(dist(cbind(df_ana$long, df_ana$lat)))
+dim(psu_dist)
+```
+### Create Inverse Distance Matrix
+```{r}
+psu_dist_inv <- 1/psu_dist
+```
+
+### Calculate Morans I using the ape package
+
+##### DOES NOT WORK
+```{r}
+install.packages("ape")
+ape::Moran.I(df_ana$num_hot_days, psu_dist_inv)
+```
+
+## Approach-2: Using Binary Distance Matrix
+
+### Set Spatial Coordinates
+```{r}
+xy <- cbind(df_ana$long, df_ana$lat)
+coords <- coordinates(xy)
+IDs <- row.names(as.data.frame((coords)))
+```
+
+### Distance matrix and distance
+```{r}
+# using the "spdep" package
+# assigns at least one neighbor to each and calculates the distances between
+Neigh_nb<-knn2nb(knearneigh(coords, k=1, longlat = TRUE), row.names=IDs)
+
+# returns the distance between nearest neighbors for each point
+dsts<-unlist(nbdists(Neigh_nb,coords)) 
+summary(dsts)
+
+```
+
+```{r}
+max_1nn<-max(dsts)
+max_1nn # maximum distance to provide at least one neighbor to each point
+```
+
+```{r}
+# We create different neighbor structures based upon distance
+Neigh_kd1<-dnearneigh(coords,d1=0, d2=max_1nn, row.names=IDs)   # neighbors within maximum distance
+# Neigh_kd2<-dnearneigh(coords,d1=0, d2=2*max_1nn, row.names=IDs) # neighbors within 2X maximum distance
+
+nb_1<-list(d1=Neigh_kd1, d2=Neigh_kd2) # list of neighbor structures
+sapply(nb_1, function(x) is.symmetric.nb(x, verbose=F, force=T))
+```
+
+## Assign weights
+```{r}
+weights<-nb2listw(Neigh_kd1, style="W")   # row standardized binary weights, using minimum distance for one neighbor
+weights                                   # "B" is simplest binary weights
+```
+
+## Monte Carlo test for Morans I
+
+```{r}
+#using row standardised weights
+moran.test(df_ana$num_hot_days, listw=weights)  
+```
+
+
+### Using MonteCarlo
+```{r}
+set.seed(1234)
+bperm<-moran.mc(df_ana$num_hot_days, listw=weights,nsim=99)
+bperm
+```
+
+
+## More approaches here: https://hughst.github.io/week-4/

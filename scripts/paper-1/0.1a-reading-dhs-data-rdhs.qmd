@@ -1,0 +1,94 @@
+---
+title: "reading-data-using-rdhs-api"
+format: html
+editor: visual
+---
+
+# Using the rdhs package
+
+## load-packages
+
+```{r}
+rm(list =ls())
+library(rdhs)
+```
+
+## Set up your DHS credentials
+
+```{r}
+set_rdhs_config(email = "adey@ucsd.edu",
+                project = "Heat waves and maternal healthcare utilization",
+                config_path = "rdhs.json",
+                cache_path = "dhs",
+                global = FALSE)
+```
+
+## Create a list of eligible surveys
+
+```{r}
+surveys <- dhs_datasets() %>% 
+  dplyr::filter(SurveyType == "DHS") %>% 
+  dplyr::filter(CountryName == "India") %>% 
+  dplyr::filter(SurveyId == "IA2020DHS") %>% 
+  dplyr::filter(FileFormat == "Stata dataset (.dta)") %>% 
+  dplyr::filter(FileType == "Individual Recode")
+
+```
+
+## Try with Bangladesh
+
+```{r}
+surveys <- dhs_datasets() %>% 
+  dplyr::filter(SurveyType == "DHS") %>% 
+  dplyr::filter(CountryName == "Bangladesh") %>% 
+  dplyr::filter(SurveyId == "BD2017DHS") %>% 
+  dplyr::filter(FileFormat == "Stata dataset (.dta)") %>% 
+  dplyr::filter(FileType == "Individual Recode")
+```
+
+### Select Variables to be imported
+
+```{r IR variables of interest}
+varlist <- c("v001", "sdist", "v005", "v021", "v024", 
+              "v040", "v101", "v012", "v020", 
+              "v106", "v107", "v119", "v124", 
+              "v125", "v130", "v190", "v201", 
+              "s116", "s190s")
+```
+
+```{r}
+??clear_cache
+```
+
+```{r}
+packageVersion("rdhs")
+```
+
+```{r}
+library(R.cache)
+getCachePath()
+clearCache(path = getCachePath(), recursive = TRUE, prompt = TRUE)
+
+??memory.limit  
+
+questions <- rdhs::search_variables(surveys$FileName, 
+                              variables = varlist)
+
+search_variables()
+```
+
+```{r}
+df_vars <- rdhs::search_variables(dataset_filenames = "IAIR7DDT.ZIP", 
+                              variables = c("v001", "v005"))
+```
+
+
+```{r}
+devtools::session_info()
+```
+
+## Extract the data (add geographical covariates: add_geo = TRUE)
+
+```{r}
+extract <- extract_dhs(questions, add_geo = T)
+```

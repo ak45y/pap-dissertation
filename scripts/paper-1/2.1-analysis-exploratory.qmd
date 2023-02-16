@@ -1,0 +1,157 @@
+---
+title: "analysis-exploratory"
+format: html
+editor: visual
+---
+
+# load-packages
+
+```{r message=FALSE}
+library(summarytools)
+library(tidyverse)
+```
+
+# Descriptives
+
+## Univariate
+
+```{r}
+hist(df_ana$num_hot_days_35)
+hist(df_ana$num_hot_days_95)
+# hist(df_ana$num_hot_days_35_95)
+hist(df_ana$num_hot_days_both)
+```
+
+
+## Crosstabs
+
+### For hotdays -- both
+```{r}
+library(compareGroups)
+table <-compareGroups(num_hot_days_both_cat ~ prop_poorest + prop_richest + 
+                        prop_general + prop_sc + prop_st + prop_obc + 
+                        prop_hindu + prop_muslim + prop_christian + 
+                        prop_religion_other + prop_edu_higher + 
+                        prop_edu_secondary + prop_edu_primary + 
+                        prop_edu_none + ice_wealth + ice_edu, 
+							data = df_ana)
+tabl_out <- createTable(table, digits.p = 3, digits = 2)
+# export2xls(tabl_out, "Data/output.xlsx")
+```
+
+
+```{r}
+library(summarytools)
+ctable(df_ana$num_hot_days_both_cat, df_ana$rural, prop = "c")
+```
+
+## for hotdays -- above 35 C
+```{r}
+library(compareGroups)
+table2 <-compareGroups(num_hot_days_35_cat ~ prop_poorest + prop_richest + 
+                        prop_general + prop_sc + prop_st + prop_obc + 
+                        prop_hindu + prop_muslim + prop_christian + 
+                        prop_religion_other + prop_edu_higher + 
+                        prop_edu_secondary + prop_edu_primary + 
+                        prop_edu_none + ice_wealth + ice_edu, 
+							data = df_ana)
+tab2_out <- createTable(table2, digits.p = 3, digits = 2)
+# export2xls(tabl_out, "Data/output.xlsx")
+
+```
+
+```{r}
+mean(df_ana$prop_obc)
+```
+
+
+############################# trying to generate a loop for this
+
+```{r}
+hot_days_defs <- c("num_hot_days_35_cat", "num_hot_days_95_cat", "num_hot_days_both_cat")
+```
+
+```{r}
+## List of dependent variables
+hot_days_defs <- c("num_hot_days_35_cat", "num_hot_days_95_cat", "num_hot_days_35_95_cat", "num_hot_days_both_cat")
+
+## List of predictors
+df_predictors <- df_ana %>% 
+  select(starts_with("prop"), starts_with("ice"))
+```
+
+## Function to summarize 
+```{r}
+func_mean <- function(x, y) {
+  df_ana %>% 
+  group_by({{x}}) %>% 
+  summarise(prop = mean({{y}}, na.rm = T))
+}
+dput(names(df_predictors))
+```
+
+## For num days both
+```{r}
+func_mean(num_hot_days_both_cat, prop_richest)
+func_mean(num_hot_days_both_cat, prop_poorest)
+
+## This works, but generates the overall mean rather than the group mean
+df_predictors %>% 
+  map(~func_mean(num_hot_days_both_cat, .))
+
+View(df_predictors)
+mean(df_predictors$prop_richest)
+```
+
+```{r}
+lapply(df_predictors, func_mean)
+```
+
+
+```{r}
+library(purrr)
+hot_days_defs <- c("num_hot_days_35_cat", "num_hot_days_95_cat", "num_hot_days_35_95_cat", "num_hot_days_both_cat")
+
+hot_days_defs %>% 
+  map_df(~ (df_ana %>% group_by(.) %>% summarize(richest = mean(prop_richest))))
+
+sum_list <- list()  
+
+for (i in seq_along(hot_days_defs)) {
+df <- df_ana %>% group_by({{i}}) %>% summarize(richest = mean(prop_richest))
+sum_list <- c(sum_list, df)
+}
+View(sum_list)
+sum_list[3]
+```
+
+
+
+```{r}
+df_ana %>% 
+  group_by(across(ends_with("cat"))) %>% 
+  summarize(richest = mean(prop_richest))
+```
+
+
+
+### Num hot days by wealth
+
+```{r}
+df_dhs_temp_psu_ana %>% 
+  group_by(num_hot_days_cat) %>% 
+  summarise_all(funs(mean(., na.rm = T))) %>% 
+  rename_all(~paste0("mean_", .)) %>% 
+  dplyr::select(-mean_psu)
+```
+
+# Spatial Explorations
+
+## Plot the number of hot days in a PSU on the India map
+
+```{r}
+ggplot() + 
+  geom_point(data = df_dhs_temp_psu_ana, aes(x = long, y = lat, color = num_hot_days_cat)) + 
+  tidyterra::geom_spatvector(data = ind_adm_0, fill = NA, color = "black") + 
+  theme_bw()
+```

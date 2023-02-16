@@ -1,0 +1,135 @@
+---
+title: "aggregate-IR-data-and-merge-with-psu-hotdays-dataset"
+format: html
+---
+
+############### This script takes the IR data with new SLI variable created and a) one hot encodes variables b) aggregates the dataset at the PSU level, c) creates new variables such as the Index of concentration at the extremes, and finally d) merges this aggregated dataset with the PSU - hotdays data  
+
+
+
+# load packages
+```{r, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(caret)
+library(data.table)
+```
+
+
+# One hot encode select variables
+
+## Create a list of dummy variables
+
+```{r}
+dummy <- dummyVars(~ hh_wealth_quintile_og + hh_caste + hh_religion_club + mat_edu_level,
+                       data = df_dhs_IR_new_sli)
+```
+
+## Predict and Convert that into a dataframe
+
+```{r}
+df_dhs_IR_onehot <- data.frame(predict(dummy, newdata = df_dhs_IR_new_sli))
+# glimpse(df_dhs_IR_onehot)
+```
+
+## Subset the original dataset and remove the variables being one-hot-encoded
+
+```{r}
+df_dhs_IR_subset <- df_dhs_IR_new_sli %>% 
+  select(-c(hh_wealth_quintile_og, hh_caste, hh_religion_club, mat_edu_level))
+```
+
+## Create the final dataset by merging the subsetted data with the one-hot-encoded data
+
+```{r}
+df_IR_onehot_done <- cbind(df_dhs_IR_subset, df_dhs_IR_onehot)
+# glimpse(df_IR_onehot_done)
+```
+
+
+# Aggregate the dataset at PSU level
+
+## look at the list of all variables
+```{r}
+names(df_IR_onehot_done)
+```
+
+
+
+```{r}
+df_IR_aggregate <- df_IR_onehot_done %>% 
+  group_by(psu,) %>% 
+  summarize(num_cases = n(), 
+            # by wealth
+            prop_poorest = mean(hh_wealth_quintile_og.poorest, na.rm = T),
+            prop_richest = mean(hh_wealth_quintile_og.richest, na.rm = T),
+            avg_wealth_score = mean(hh_wealth_score_og, na.rm = T),
+            # by caste
+            prop_general = mean(hh_caste.none.of.them, na.rm = T),
+            prop_sc = mean(hh_caste.schedule.caste, na.rm = T),
+            prop_st = mean(hh_caste.schedule.tribe, na.rm = T),
+            prop_obc = mean(hh_caste.obc, na.rm = T),
+            # religion
+            prop_hindu = mean(hh_religion_club.hindu, na.rm = T),
+            prop_muslim = mean(hh_religion_club.muslim, na.rm = T),
+            prop_christian = mean(hh_religion_club.christian, na.rm = T),
+            prop_religion_other = mean(hh_religion_club.other, na.rm = T),
+            # education level
+            prop_edu_higher = mean(mat_edu_level.higher, na.rm = T),
+            prop_edu_secondary = mean(mat_edu_level.secondary, na.rm = T),
+            prop_edu_primary = mean(mat_edu_level.primary, na.rm = T),
+            prop_edu_none = mean(mat_edu_level.no.education, na.rm = T),
+            # PSU altitude
+            avg_psu_alt = mean(psu_alt_mtrs, na.rm = T)) %>% 
+  # create variables for ICE
+  ## for wealth
+  mutate(ice_wealth = prop_richest - prop_poorest) %>% 
+  mutate(ice_edu = (prop_edu_higher - prop_edu_none)) 
+
+# glimpse(df_IR_aggregate)
+```
+
+## Check for missing values
+```{r}
+# sapply(df_IR_aggregate, function(x) sum(is.na(x)))
+# View(df_IR_aggregate %>% filter(is.na(prop_st)))
+nrow(df_IR_aggregate)
+```
+
+# Merge the aggregated IR dataset with the PSU hotdays data
+
+## Perform merge
+
+```{r}
+# glimpse(df_psu_hotdays)
+```
+
+
+```{r merge-IR-and-Geo}
+df_ana <- df_IR_aggregate %>% 
+  inner_join(df_psu_hotdays, by = "psu") %>% 
+  dplyr::select(psu, lat, long, state, district, rural, starts_with("num"), everything())
+
+glimpse(df_ana)
+```
+
+# save work
+
+```{r}
+ls()
+```
+
+```{r}
+rm(list=setdiff(ls(), c("df_ana")))
+```
+
+## save image
+```{r}
+save.image(file = "./1.5-dhs-IR-aggregated-merged-with-PSU-hotdays.RData")
+```
+
+## Save as csv
+```{r}
+write.csv(df_ana, "./data/dhs-IR-aggregated-merged-with-PSU-hotdays.csv")
+```
+
+

@@ -1,0 +1,65 @@
+---
+title: "basic-regression-models"
+format: html
+---
+
+```{r, message = False, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+```
+
+
+
+```{r}
+ols_model = linear_reg(mode = "regression", engine = "lm")
+```
+
+```{r}
+model_fit <- ols_model %>% fit(num_hot_days_both ~ prop_poorest + prop_richest + 
+                             prop_general + prop_sc + prop_st + prop_obc + 
+                             prop_hindu + prop_muslim + prop_christian + 
+                             prop_religion_other + prop_edu_higher + 
+                             prop_edu_secondary + prop_edu_primary + 
+                             prop_edu_none + avg_psu_alt + ice_wealth + ice_edu, 
+                           data = df_ana)
+```
+
+```{r}
+num_hotdays_both_pred <- (model_fit %>% predict(df_ana)) 
+num_hotdays_both_pred
+```
+
+
+
+```{r}
+df_ana2 <-  df_ana %>% 
+  mutate(pred_hotdays_both = num_hotdays_both_pred$.pred) %>% 
+  mutate(residue_both = pred_hotdays_both - num_hot_days_both)
+```
+
+## Check that predictions from tidymodels match the lm package
+```{r}
+model_lm_og <- lm(num_hot_days_both ~ prop_poorest + prop_richest + 
+                             prop_general + prop_sc + prop_st + prop_obc + 
+                             prop_hindu + prop_muslim + prop_christian + 
+                             prop_religion_other + prop_edu_higher + 
+                             prop_edu_secondary + prop_edu_primary + 
+                             prop_edu_none + avg_psu_alt + ice_wealth + ice_edu,
+                  data = df_ana)
+```
+
+```{r}
+df_ana2 <- df_ana2 %>% 
+  mutate(pred_og = predict(model_lm_og)) %>% 
+  mutate(diff = pred_og - pred_hotdays_both)
+
+summary(df_ana2$diff)
+```
+## So this helps me summarize that the predictions made by tidymodels and the OG lm function are the same
+
+```{r}
+write.csv(df_ana2, "./data/psu_ana_residue.csv")
+```
+
+## I plotted the residuals in QGIS and found that the resiuals are clustered together. This means that there is evidence of spatial clustering. We now need to to perform spatial regression. Woot woot (kind of sarcastic!)
+

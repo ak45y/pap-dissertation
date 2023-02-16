@@ -1,0 +1,275 @@
+---
+title: "additional-codes"
+format: html
+editor: visual
+---
+
+#################### 
+
+##### Not Run
+
+#################### 
+
+## Example code to get data for multiple years
+
+### Loop through each year and link the climate data with the PSUs
+
+```{r get-t-max-data-for-all-PSUs}
+library(raster)
+setwd("./Data/daily-temp-2019-21/tmax/")
+(a <- list.files(pattern ="\\.nc"))
+# a <- a[c(2)]
+
+df_tmax_psu = NULL
+
+system.time(
+ for (i in a){
+    rd0 <- brick(i)                       #load the data in raster format
+    #plot(rd0, 1)
+    rd1 <- rotate(rd0)                    #convert the LONG from 0:360 to -180:180 degree 
+    plot(rd1, 1)
+    
+    ## Restrict the spatial data to the country boundary 
+    cd0 <- crop(x = rd1, y = ind_adm_0_buf)
+    cd1 <- rasterize(x = ind_adm_0_buf, y = cd0)
+    cd2 <- mask(x = cd0, mask = cd1)
+    plot(cd2, 1)
+    
+   # Extract the climate data for each PSU location
+    df1 <- raster::extract(cd2,   # raster layer cropped to the country boundary
+           df_dhs_IR_geo_spdf,      # SPDF with centroids for buffer
+           df=TRUE)    # return a dataframe
+
+    # Add the PSU information
+    df1 <- cbind(df_dhs_IR_geo_spdf@data, df1)
+
+    # Convert to long format
+    df2 <- df1 %>%
+      dplyr::select(-c(ID)) %>%
+      gather(key = date, value = tmax, -DHSCLUST) %>%
+      mutate(date = as.Date(substring(date, 2), format = "%Y.%m.%d"))
+
+    df_tmax_psu <- bind_rows(df_tmax_psu, df2)
+    
+  }
+)
+
+# View(df_tmax_psu)
+```
+
+# Example code to merge DHS and Temperature datasets for a Single Year
+
+## Load the temperature data in raster format
+
+```{r}
+library(raster)
+world_temperature_ras_brick <- brick("./Data/daily-temp-2019-21/tmax/tmax.2020.nc")
+plot(world_temperature_ras_brick, 1)
+
+## Convert the longitude from 0:360 to -180:180
+world_temperature_ras_brick_180 <- rotate(world_temperature_ras_brick)
+plot(world_temperature_ras_brick, 1)
+```
+
+## Crop the temperature data to India country boundary
+
+```{r}
+india_temperature_ras_brick <- crop(x = world_temperature_ras_brick_180, y = ind_adm_0_buf)
+# convert from raster brick to raster
+india_temperature_raster <- rasterize(x = ind_adm_0_buf, y = india_temperature_ras_brick)
+
+# mask missing values
+india_temperature_raster2 <- mask(x = india_temperature_ras_brick, mask = india_temperature_raster)
+plot(india_temperature_raster2, 1)
+
+```
+
+## Extract the climate data for each PSU location
+
+```{r}
+df_temp <- raster::extract(india_temperature_raster2, # raster layer cropped to the country boundary
+           df_dhs_psu_geo_spdf,      # SPDF with centroids for buffer
+           df=TRUE)    # return a dataframe
+dim(df_temp)
+```
+
+## Add Variables from the DHS
+
+### From IR dataset
+
+```{r}
+df_temp <- cbind(df_dhs_IR_geo_spdf@data, df_temp)
+head(df_temp)
+```
+
+### From PSU dataset
+
+```{r}
+df_temp <- cbind(df_dhs_psu_geo_spdf@data, df_temp)
+head(df_temp)
+```
+
+## Convert from wide to long
+
+```{r}
+df_dhs_max_temp_2020_long <- df_temp %>%
+  pivot_longer(
+    cols = starts_with("X2020"),
+    names_to = "date",
+    values_to = "max_temp",
+    values_drop_na = TRUE) %>% 
+  mutate(date = as.Date(substring(date, 2), format = "%Y.%m.%d"))
+
+head(df_dhs_max_temp_2020_long)
+dim(df_dhs_max_temp_2020_long)
+```
+
+```{r}
+head(df_dhs_psu_geo_spdf@data)
+```
+
+# Code to extract temperature data for each district in India
+
+\# load-packages
+
+\`\`\`{r}
+
+library(geodata)
+
+\`\`\`
+
+\# Read Data
+
+\## Get India Shape File for District
+
+\`\`\`{r}
+
+library(geodata)
+
+ind_adm_2 \<- geodata::gadm(country = "IND", level = 2, path = tempdir())
+
+ind_adm_2\_sf \<- sf::st_as_sf(ind_adm_2)
+
+ind_adm_2\_spdf \<- sf::as_Spatial(ind_adm_2\_sf)
+
+plot(ind_adm_2)
+
+class(ind_adm_2)
+
+\`\`\`
+
+\## Get max temperature raster for 2020
+
+\## Load the temperature data in raster format
+
+\`\`\`{r}
+
+library(raster)
+
+world_temperature_ras_brick \<- brick("./Data/daily-temp-2019-21/tmax/tmax.2020.nc")
+
+plot(world_temperature_ras_brick, 1)
+
+\## Convert the longitude from 0:360 to -180:180
+
+world_temperature_ras_brick_180 \<- rotate(world_temperature_ras_brick)
+
+plot(world_temperature_ras_brick, 1)
+
+\`\`\`
+
+\## Crop the temperature data to India country boundary
+
+\`\`\`{r}
+
+india_temperature_ras_brick \<- crop(x = world_temperature_ras_brick_180, y = ind_adm_2\_spdf)
+
+\# convert from raster brick to raster
+
+india_temperature_raster \<- rasterize(x = ind_adm_2\_spdf, y = india_temperature_ras_brick)
+
+\# mask missing values
+
+india_temperature_raster2 \<- mask(x = india_temperature_ras_brick, mask = india_temperature_raster)
+
+plot(india_temperature_raster2, 1)
+
+\`\`\`
+
+\## Extract the climate data for each district location
+
+\### USing raster::extract
+
+\`\`\`{r}
+
+df_temp_1 \<- raster::extract(india_temperature_raster2, \# raster layer cropped to the country boundary
+
+ind_adm_2\_spdf, \# SPDF with centroids for buffer
+
+fun = mean,
+
+na.rm = T,
+
+df=TRUE) \# return a dataframe
+
+head(df_temp)
+
+dim(df_temp)
+
+\# length(ind_adm_2\$NAME_2)
+
+\`\`\`
+
+\## Using exactextractr::exact_extract
+
+\`\`\`{r}
+
+library(exactextractr)
+
+df_temp_2 \<- exact_extract(india_temperature_raster2, ind_adm_2\_spdf, "mean")
+
+head(df_temp_2)
+
+class(df_temp_2)
+
+ind_adm_2\$avg_temp \<- colMeans(df_temp_2, na.rm = T)
+
+\`\`\`
+
+\### Plot the district average temperatures
+
+\`\`\`{r}
+
+ggplot() +
+
+tidyterra::geom_spatvector(data = ind_adm_2, mapping = aes(fill = avg_temp))
+
+\`\`\`
+
+\### Convert the new polygon data with the average temperature value into an spdf object
+
+\`\`\`{r}
+
+ind_adm_2\_sf \<- sf::st_as_sf(ind_adm_2)
+
+ind_adm_2\_spdf \<- sf::as_Spatial(ind_adm_2\_sf)
+
+\`\`\`
+
+\###################
+
+\##### Did not Work
+
+\###################
+
+\## Using the terra package
+
+\#### This is not working -- need to explore
+
+\`\`\`{r}
+
+library(terra)
+
+df_temp_3 \<- zonal(india_temperature_raster2, ind_adm_2\_sf, "mean", na.rm = T)
+
+\`\`\`

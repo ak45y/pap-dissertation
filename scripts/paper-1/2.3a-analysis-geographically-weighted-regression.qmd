@@ -1,0 +1,295 @@
+---
+title: "2.3a-geographically-weighted-regression"
+format: html
+---
+
+# load-packages
+```{r}
+library(tidyverse)
+library(spgwr)
+library(sf)
+library(tmap)
+library(spdep)
+library(sp)
+```
+
+# scale the predictor variable
+```{r}
+df_ana <- df_ana %>% 
+  mutate(num_hot_days_both_scaled = num_hot_days_both/10) %>% 
+  mutate(num_hot_days_35_scaled = num_hot_days_35/10) %>%
+  mutate(num_hot_days_95_scaled = num_hot_days_95/10) 
+```
+
+# Generate formulas
+
+
+
+```{r}
+# Hotdays as outcome
+fmla_hotday_both_full <- as.formula(num_hot_days_both_scaled ~ prop_poorest + prop_richest + 
+                             prop_general + prop_sc + prop_st + prop_obc + 
+                             prop_hindu + prop_muslim + prop_christian + 
+                             prop_religion_other + prop_edu_higher + 
+                             prop_edu_secondary + prop_edu_primary + 
+                             prop_edu_none + avg_psu_alt + ice_wealth + ice_edu)
+
+# socio-demographics as outcome
+## hotdays - both as predictor
+### Caste
+fmla_obc_both <- as.formula(prop_obc ~ num_hot_days_both_scaled)
+fmla_sc_both <- as.formula(prop_sc ~ num_hot_days_both_scaled)
+fmla_st_both <- as.formula(prop_st ~ num_hot_days_both_scaled)
+### Wealth
+fmla_richest_both <- as.formula(prop_richest ~ num_hot_days_both_scaled)
+fmla_poorest_both <- as.formula(prop_poorest ~ num_hot_days_both_scaled)
+### Religion
+fmla_hindu_both <- as.formula(prop_hindu ~ num_hot_days_both_scaled)
+fmla_muslim_both <- as.formula(prop_muslim ~ num_hot_days_both_scaled)
+fmla_christian_both <- as.formula(prop_christian ~ num_hot_days_both_scaled)
+### ICE
+fmla_ice_wealth_both <- as.formula(ice_wealth ~ num_hot_days_both_scaled)
+fmla_ice_edu_both <- as.formula(ice_edu ~ num_hot_days_both_scaled)
+
+## hotdays - 35 as predictor
+### Caste
+fmla_obc_35 <- as.formula(prop_obc ~ num_hot_days_35_scaled)
+fmla_sc_35 <- as.formula(prop_sc ~ num_hot_days_35_scaled)
+fmla_st_35 <- as.formula(prop_st ~ num_hot_days_35_scaled)
+### Wealth
+fmla_richest_35 <- as.formula(prop_richest ~ num_hot_days_35_scaled)
+fmla_poorest_35 <- as.formula(prop_poorest ~ num_hot_days_35_scaled)
+### Religion
+fmla_hindu_35 <- as.formula(prop_hindu ~ num_hot_days_35_scaled)
+fmla_muslim_35 <- as.formula(prop_muslim ~ num_hot_days_35_scaled)
+fmla_christian_35 <- as.formula(prop_christian ~ num_hot_days_35_scaled)
+### ICE
+fmla_ice_wealth_35 <- as.formula(ice_wealth ~ num_hot_days_35_scaled)
+fmla_ice_edu_35 <- as.formula(ice_edu ~ num_hot_days_35_scaled)
+
+## hotdays - 95 as predictor
+### Caste
+fmla_obc_95 <- as.formula(prop_obc ~ num_hot_days_95_scaled)
+fmla_sc_95 <- as.formula(prop_sc ~ num_hot_days_95_scaled)
+fmla_st_95 <- as.formula(prop_st ~ num_hot_days_95_scaled)
+### Wealth
+fmla_richest_95 <- as.formula(prop_richest ~ num_hot_days_95_scaled)
+fmla_poorest_95 <- as.formula(prop_poorest ~ num_hot_days_95_scaled)
+### Religion
+fmla_hindu_95 <- as.formula(prop_hindu ~ num_hot_days_95_scaled)
+fmla_muslim_95 <- as.formula(prop_muslim ~ num_hot_days_95_scaled)
+fmla_christian_95 <- as.formula(prop_christian ~ num_hot_days_95_scaled)
+### ICE
+fmla_ice_wealth_95 <- as.formula(ice_wealth ~ num_hot_days_95_scaled)
+fmla_ice_edu_95 <- as.formula(ice_edu ~ num_hot_days_95_scaled)
+```
+
+
+# Generate crude OLS models
+## for soio-demographics as outcome
+### With hotdays-both as predictor
+```{r}
+### caste
+model_obc_both <- lm(fmla_obc_both, data = df_ana)
+model_sc_both <- lm(fmla_sc_both, data = df_ana)
+model_st_both <- lm(fmla_st_both, data = df_ana)
+
+## wealth
+model_richest_both <- lm(fmla_richest_both, data = df_ana)
+model_poorest_both <- lm(fmla_poorest_both, data = df_ana)
+
+### Religion
+model_hindu_both <- lm(fmla_hindu_both, data = df_ana)
+model_muslim_both <- lm(fmla_muslim_both, data = df_ana)
+model_christian_both <- lm(fmla_christian_both, data = df_ana)
+
+### ICE
+model_ice_wealth_both <- lm(fmla_ice_wealth_both, data = df_ana)
+model_ice_edu_both <- lm(fmla_ice_edu_both, data = df_ana)
+```
+
+
+### With hotdays-35 as predictor
+```{r}
+### caste
+model_obc_35 <- lm(fmla_obc_35, data = df_ana)
+model_sc_35 <- lm(fmla_sc_35, data = df_ana)
+model_st_35 <- lm(fmla_st_35, data = df_ana)
+
+## wealth
+model_richest_35 <- lm(fmla_richest_35, data = df_ana)
+model_poorest_35 <- lm(fmla_poorest_35, data = df_ana)
+
+### Religion
+model_hindu_35 <- lm(fmla_hindu_35, data = df_ana)
+model_muslim_35 <- lm(fmla_muslim_35, data = df_ana)
+model_christian_35 <- lm(fmla_christian_35, data = df_ana)
+
+### ICE
+model_ice_wealth_35 <- lm(fmla_ice_wealth_35, data = df_ana)
+model_ice_edu_35 <- lm(fmla_ice_edu_35, data = df_ana)
+```
+
+### With hotdays-35 as predictor
+```{r}
+### caste
+model_obc_95 <- lm(fmla_obc_95, data = df_ana)
+model_sc_95 <- lm(fmla_sc_95, data = df_ana)
+model_st_95 <- lm(fmla_st_95, data = df_ana)
+
+## wealth
+model_richest_95 <- lm(fmla_richest_95, data = df_ana)
+model_poorest_95 <- lm(fmla_poorest_95, data = df_ana)
+
+### Religion
+model_hindu_95 <- lm(fmla_hindu_95, data = df_ana)
+model_muslim_95 <- lm(fmla_muslim_95, data = df_ana)
+model_christian_95 <- lm(fmla_christian_95, data = df_ana)
+
+### ICE
+model_ice_wealth_95 <- lm(fmla_ice_wealth_95, data = df_ana)
+model_ice_edu_95 <- lm(fmla_ice_edu_95, data = df_ana)
+```
+
+# Summaries of the crude model
+## hotdays - both
+```{r}
+### caste
+summary(model_obc_both)
+summary(model_sc_both)
+summary(model_st_both)
+
+## Wealth
+summary(model_richest_both)
+summary(model_poorest_both)
+
+## Religion
+summary(model_hindu_both)
+summary(model_muslim_both)
+summary(model_christian_both)
+
+## ICE
+summary(model_ice_wealth_both)
+summary(model_ice_edu_both)
+
+```
+## hotdays - 35
+```{r}
+### caste
+summary(model_obc_35)
+summary(model_sc_35)
+summary(model_st_35)
+
+## Wealth
+summary(model_richest_35)
+summary(model_poorest_35)
+
+## Religion
+summary(model_hindu_35)
+summary(model_muslim_35)
+summary(model_christian_35)
+
+## ICE
+summary(model_ice_wealth_35)
+summary(model_ice_edu_35)
+```
+## hotdays - 95
+```{r}
+### caste
+summary(model_obc_95)
+summary(model_sc_95)
+summary(model_st_95)
+
+## Wealth
+summary(model_richest_95)
+summary(model_poorest_95)
+
+## Religion
+summary(model_hindu_95)
+summary(model_muslim_95)
+summary(model_christian_95)
+
+## ICE
+summary(model_ice_wealth_95)
+summary(model_ice_edu_95)
+```
+# Extract coefficients
+## List of models - hotday-both
+```{r}
+models_list_both <- list(model_obc_both, model_sc_both, model_st_both, 
+                         model_richest_both, model_poorest_both, model_hindu_both, 
+                         model_muslim_both, model_christian_both, 
+                         model_ice_wealth_both, model_ice_edu_both)
+```
+
+## List of models - hotday-35
+```{r}
+models_list_35 <- list(model_obc_35, model_sc_35, model_st_35, 
+                         model_richest_35, model_poorest_35, model_hindu_35, 
+                         model_muslim_35, model_christian_35, 
+                         model_ice_wealth_35, model_ice_edu_35)
+```
+
+## List of models - hotday-95
+```{r}
+models_list_95 <- list(model_obc_95, model_sc_95, model_st_95, 
+                         model_richest_95, model_poorest_95, model_hindu_95, 
+                         model_muslim_95, model_christian_95, 
+                         model_ice_wealth_95, model_ice_edu_95)
+```
+
+
+# Extract Coefficients in a data farme 
+```{r}
+df_coef <- data.frame("hotday_both" = as.numeric(),
+                      "hotday_35" = as.numeric(),
+                      "hotday_95" = as.numeric())
+```
+
+```{r}
+
+for (i in 1:length(models_list_both)) {
+  df_coef[i, 3] <- coef(models_list_95[[i]])[2]
+}
+
+head(df_coef)
+```
+
+```{r}
+write.csv(df_coef, "./data/crude_coefs.csv")
+```
+
+
+# Test whether residuals are plotted homogeneously
+
+## Predict the outcome adn generate residual
+```{r}
+df_ana <- df_ana %>% 
+  ## For OBC
+  mutate(pred_obc_both = predict(model_obc_both)) %>% 
+  mutate(residue_obc_both = prop_obc-pred_obc_both) %>% 
+  ## For Hindu
+  mutate(pred_hindu_both = predict(model_hindu_both)) %>% 
+  mutate(residue_hindu_both = prop_hindu-pred_hindu_both) %>% 
+  ## Richest
+  mutate(pred_richest_both = predict(model_richest_both)) %>% 
+  mutate(residue_richest_both = prop_richest-pred_richest_both) 
+
+summary(df_ana$residue_richest_both)
+```
+## Output data to plot in QGIS
+```{r}
+write.csv(df_ana, "./data/residuals.csv")
+```
+
+
+## Plot the residual on the map
+```{r}
+library(tidyterra)
+ggplot() + 
+  geom_point(data = df_ana, aes(x = long, y = lat, color = residue_obc_both)) + 
+  tidyterra::geom_spatvector(data = ind_adm_0, fill = NA, color = "black") + 
+  scale_color_gradient(low = "red", high = "blue") +
+  theme_bw()
+```
+

@@ -1,0 +1,53 @@
+---
+title: "read-temperature-data"
+format: html
+editor: visual
+---
+
+## Identify years to download data
+
+```{r}
+# year = as.character(c(2019:2021))
+# year = c(2019:2021)
+year2 = c(2000:2021)
+```
+
+## Download T-max data for 2019-21
+
+```{r}
+setwd("./Data/daily-temp-2019-21/tmax/")
+for (y in year){
+  download.file(paste("ftp://ftp2.psl.noaa.gov/Datasets/cpc_global_temp/",
+                      "tmax.",y,".nc",sep=""),
+                destfile=paste("tmax.",y,".nc",sep=""), method="curl")
+}
+```
+
+## Download T-max data for last 15 years
+
+```{r}
+setwd("./Data/t-max-2000-2021/")
+for (y in year2){
+  download.file(paste("ftp://ftp2.psl.noaa.gov/Datasets/cpc_global_temp/",
+                      "tmax.",y,".nc",sep=""),
+                destfile=paste("tmax.",y,".nc",sep=""), method="curl")
+}
+```
+
+## Download T-max data for a single year (2022)
+
+```{r}
+setwd("./Data/t-max-2000-2021/")
+download.file("ftp://ftp2.psl.noaa.gov/Datasets/cpc_global_temp/tmax.2022.nc", destfile="tmax.2022.nc", method="curl")
+```
+
+## Download T-min data for 2019-2021
+
+```{r}
+setwd("./Data/daily-temp-2019-21/tmin/")
+for (y in year){
+  download.file(paste("ftp://ftp2.psl.noaa.gov/Datasets/cpc_global_temp/",
+                      "tmin.",y,".nc",sep=""),
+                destfile=paste("tmin.",y,".nc",sep=""), method="curl")
+}
+```

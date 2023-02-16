@@ -1,0 +1,120 @@
+---
+title: "CART models"
+format: html
+editor: visual
+---
+
+# load libraries
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(summarytools)
+library(rpart)
+```
+
+# Read the PSU level data
+
+```{r}
+df_ana <- read.csv("./Data/psu_level_outcomes.csv")
+```
+
+```{r}
+dput(names(df_ana))
+```
+
+# CART model for absolute cutoff outcome
+
+## First split into training and test data (70/30)
+
+```{r}
+library(caret)
+set.seed(011235)
+trainIndex_35 <- createDataPartition(df_ana$num_hot_days_35, p = 0.7, list = FALSE)
+trainData_35 <- df_ana[trainIndex_35, ]
+testData_35 <- df_ana[-trainIndex_35, ]
+```
+
+## Next, fit the CART model
+
+```{r}
+cartModel_both <- rpart(num_hot_days_both ~ prop_richest + 
+                             prop_general + prop_hindu + prop_edu_higher + rural, 
+                   data = df_ana)
+```
+
+## Plot the CART model
+
+```{r}
+plot(cartModel_both)
+text(cartModel_both)
+```
+
+## Test model performance
+
+```{r}
+predictions_35 <- predict(cartModel_35, testData_35)
+```
+
+## Evaluate model performance: MSE
+
+```{r}
+mean((predictions_35-testData_35$num_hot_days_35)^2)
+```
+
+## Evaluate model performance: R-squared
+
+```{r}
+cor(predictions_35, testData_35$num_hot_days_35)^2
+```
+
+# CART model for relative cutoff outcome
+
+## First split into training and test data (70/30)
+
+```{r}
+library(caret)
+set.seed(011235)
+trainIndex_95 <- createDataPartition(df_ana$num_hot_days_95, p = 0.7, list = FALSE)
+trainData_95 <- df_ana[trainIndex_95, ]
+testData_95 <- df_ana[-trainIndex_95, ]
+```
+
+## Next, fit the CART model
+
+```{r}
+cartModel_95 <- rpart(num_hot_days_95 ~ hh_sc_avg + hh_st_avg + hh_obc_avg + hh_muslim_avg + 
+                   hh_hindu_avg + hh_not_hindu_avg + hh_wealth_score, 
+                   data = trainData_95,
+                  minbucket = 0.001)
+
+```
+
+## Plot the CART model
+
+```{r}
+plot(cartModel_95)
+text(cartModel_95)
+```
+
+```{r}
+typeof(df_ana$num_hot_days_95)
+hist(df_ana$num_hot_days_95)
+```
+
+## Test model performance
+
+```{r}
+predictions_95 <- predict(cartModel_95, testData_95)
+```
+
+## Evaluate model performance: MSE
+
+```{r}
+mean((predictions_95-testData_95$num_hot_days_95)^2)
+```
+
+## Evaluate model performance: R-squared
+
+```{r}
+cor(predictions_95, testData_95$num_hot_days_95)^2
+```

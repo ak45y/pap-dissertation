@@ -1,0 +1,66 @@
+---
+title: "reading-data-from-a-locally-saved-file"
+format: html
+editor: source
+---
+
+# load-packages
+```{r, message = F, warning = F}
+# rm(list = ls())
+library(haven)
+library(tidyverse)
+library(summarytools)
+```
+
+
+# Read IR Data
+
+## select variables of interest
+```{r IR variables of interest}
+varlist <- c("sdist", "v005", "v021", "v024", 
+              "v040", "v012", "v020", 
+              "v119", "v124", "v125", "v130", 
+              "v190", "v191", "v201", "s116", 
+             "d105a", "d105b", "d105c", "d105d", 
+             "d105e", "d105f", "d105g", "d105h", 
+             "d105i", "d105j")
+```
+
+## Load the dataset
+```{r read-IR}
+df_dhs_IR_raw <- read_dta("../../common-datasets/india-nfhs-5/individual-recode/IAIR7DFL.DTA",
+                      col_select = all_of(varlist))
+
+df_dhs_IR_raw <- as_factor(df_dhs_IR_raw) 
+```
+
+## Rename Variables and create new variables
+```{r}
+df_dhs_IR <- df_dhs_IR_raw %>% 
+  mutate(state_code = as.numeric(v024)) %>% 
+  ## Renaming variables
+  rename(psu = v021, 
+         dist_name = sdist,
+         state_name = v024,
+         altitude_meters = v040,
+         mat_age = v012,
+         ever_married = v020,
+         hh_electricity = v119,
+         hh_motorcycle = v124,
+         hh_car = v125, 
+         hh_religion = v130,
+         hh_caste = s116,
+         hh_wealth_quintile = v190,
+         hh_wealth_score = v191,
+         mat_parity = v201) %>% 
+  # Create new variables
+  ## Weight
+  mutate(wt = v005/1000000) %>% 
+  ## Wealth Score
+  mutate(hh_wealth_score = (hh_wealth_score - min(hh_wealth_score)) / (max(hh_wealth_score)-min(hh_wealth_score)) * 100)  %>% 
+  dplyr::select(-v005)
+# View(df_dhs_IR)
+```
+
+
+

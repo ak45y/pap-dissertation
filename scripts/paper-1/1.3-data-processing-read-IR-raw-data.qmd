@@ -1,0 +1,101 @@
+---
+title: "Read Individual data and create basic variables"
+format: html
+editor: visual
+---
+
+####### This script reads the Individual dataset from the DHS. It renames a few variables for ease of use later
+
+# load-packages
+
+```{r, message = F, warning = F}
+# rm(list = ls())
+library(haven)
+library(tidyverse)
+library(summarytools)
+```
+
+# Read IR Data
+
+## select variables of interest
+
+```{r IR variables of interest}
+varlist <- c("sdist", "v005", "v021", "v023", "v024", 
+              "v040", "v012", "v025", "v106",
+              "v130", "v190", "v191", "v201", "s116", 
+             # variables for wealth index
+             "v119", "v120", "v121", "v122", 
+             "v123", "v124", "v125", "v127", 
+             "v128", "v129", "v136", "v153", 
+             "v161")
+```
+
+### Read individual dataset
+
+```{r read-IR}
+df_dhs_IR_raw <- read_dta("../../common-datasets/india-nfhs-5/individual-recode/IAIR7DFL.DTA",
+                      col_select = all_of(varlist))
+
+df_dhs_IR_raw <- as_factor(df_dhs_IR_raw) 
+```
+
+## Rename Variables
+
+
+```{r}
+df_dhs_IR <- df_dhs_IR_raw %>% 
+  # Renaming variables
+  rename(psu = v021, 
+         rural = v025,
+         strata = v023,
+         dist_name = sdist,
+         state_name = v024,
+         wt_raw = v005,
+         psu_alt_mtrs = v040,
+         mat_age = v012,
+         mat_parity = v201,
+         mat_edu_level = v106,
+         hh_religion = v130,
+         hh_caste = s116,
+         hh_wealth_quintile_og = v190,
+         hh_wealth_score_og = v191) %>% 
+  # Create a few basic variables
+  ## wealth score
+  mutate(hh_wealth_score_og = hh_wealth_score_og/100000) %>% 
+  # Weight
+  mutate(wt = wt_raw/1000000) %>% 
+  # religion - non-hindu
+  mutate(hh_religion_club = case_when(
+    hh_religion == "hindu" ~ "hindu",
+    hh_religion == "muslim" ~ "muslim",
+    hh_religion == "christian" ~ "christian",
+    TRUE ~ "other")) %>% 
+  mutate(hh_religion_club = fct_relevel(hh_religion_club, "hindu", "muslim", 
+                                        "christian", "other")) 
+  
+
+names(df_dhs_IR)
+```
+
+
+
+
+## Drop respondents who are not de jure residents
+```{r}
+sum(is.na(df_dhs_IR$hh_caste))
+
+## 18312 respondents will be dropped in the next step
+```
+
+```{r}
+
+df_dhs_IR_comp_cases <- df_dhs_IR %>% 
+  filter(v119 != "not a dejure resident") %>%  # 18312 cases dropped
+  filter(!is.na(hh_caste)) # 34204 cases dropped
+  
+nrow(df_dhs_IR) - nrow(df_dhs_IR_comp_cases)
+```
+
+```{r}
+df_dhs_IR_comp_cases %>% map_dbl(~sum(is.na(.)))
+```

@@ -1,0 +1,49 @@
+---
+title: "spatial-regression"
+format: html
+editor: visual
+---
+
+# load-packages
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+dput(names(df_ana))
+```
+
+## Run a general OLS
+
+```{r}
+model_basic <- glm(num_hot_days ~ hh_poorest_avg + hh_richest_avg + 
+                    hh_sc_avg + hh_obc_avg + psu_altitude,
+                  data = df_ana)
+summary(model_basic)
+```
+
+## Assess if residuals are independent or not
+
+### Compute correlogram of the residuals
+
+```{r}
+nbc <- 10
+cor_r <- pgirmess::correlog(coords=df_ana[,c("long", "lat")],
+                            z=model_basic$residuals,
+                            method="Moran", nbclass=nbc)
+
+cor_r
+
+```
+
+## Perform Spatial Regression
+
+```{r}
+install.packages("spaMM")
+glm_mod_2_spatial <- spaMM::fitme(num_hot_days ~ hh_poorest_avg + hh_richest_avg + 
+                    hh_sc_avg + hh_obc_avg + psu_altitude + 
+                      Matern(1|lat+long), 
+                    data=df_ana)
+summary(glm_mod_2_spatial)
+```

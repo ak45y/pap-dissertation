@@ -1,0 +1,1190 @@
+---
+title: "Create a new wealth index"
+format: html
+---
+
+################ This script recalculates the wealth index - by not including fan, ac etc.It uses the DHS IR file read in the previous file (1.3)
+
+# load-packages
+```{r}
+library(tidyverse)
+```
+
+# List of variables used in wealth index
+```{r}
+# "v119", "v120", "v121", "v122", "v123", "v124", "v125", "v127", "v128", "v129", "v136", "v153", "v161", "v745b"
+```
+
+
+```{r}
+head(df_dhs_IR_comp_cases)
+```
+
+# Create relevant variables
+## Floor
+
+```{r}
+# freq(df_dhs_IR_comp_cases$v127)
+# freq(df_dhs_IR_comp_cases$floor)
+```
+
+```{r floor}
+df_dhs_IR_comp_cases <- df_dhs_IR_comp_cases %>% 
+  #Floor material 
+  mutate(floor = v127) %>% 
+  mutate(floor = ifelse(v127=="mud/clay/earth"                                
+                        | v127=="argile, banco"                                
+                        | v127=="earth"                                       
+                        | v127=="sand"                                        
+                        | v127=="dung"                                        
+                        | v127=="dirt"                                       
+                        | v127=="earth/sand"                                 
+                        | v127=="earth /sand"                                
+                        | v127=="Earth/ sand"                                
+                        | v127=="terre/sable"                                # earth/sand
+                        | v127=="natural floor - earth/sand"                 
+                        | v127=="natural - earth / sand"                     
+                        | v127=="natural floor mud/earth"                    
+                        | v127=="natural - dung"                             
+                        | v127=="earth, sand"                                                              
+                        | v127=="Earth, sand"                                
+                        | v127=="dirt/sand"                                                               
+                        | v127=="earth/sand/clay"                             
+                        | v127=="earth/mud/dung"                             
+                        | v127=="earth/sand/mud"                             
+                        | v127=="earth / sand"                                 
+                        | v127=="earth (\"terra batida\")/sand"              
+                        | v127=="Earth (terra batida)"                        
+                        | v127=="Earth (terra n?o batida)"                   
+                        | v127=="earth/sand/clay"                             
+                        | v127=="earth, sand, mud"                           
+                        | v127=="Earth, sand, dung"                          
+                        | v127=="earth, sand/dung"                           
+                        | v127=="Earth/Sand/Mud"                             
+                        | v127=="mud/earth/dung"                             
+                        | v127=="earth and dung"                             
+                        | v127=="animal dung"                                
+                        | v127=="Dung"                                       
+                        | v127=="mud stones"
+                        | v127=="dirt/earth"
+                        | v127=="earth, mud, dung"
+                        | v127=="earth/ sand"
+                        | v127=="earth/bamboo"
+                        | v127=="earth/bamboo (katcha)"
+                        | v127=="earth/clay"
+                        | v127=="manure"
+                        | v127=="mud mixed with dung"
+                        | v127=="natural floor"
+                        | v127=="earth (terra batida)"
+                        | v127=="earth (terra n?o batida)"
+                        | v127=="earth, sand, dung"
+                        | v127=="mud plasterwork"
+                        | v127=="tierra"
+                        | v127=="stone"                                      # not sure
+                        | v127=="stones"                                     # not sure 
+                        | v127=="11"                                         # natural
+                        | v127=="12"                                         # natural 
+                        | v127=="13"                                         # natural 
+                        | v127=="Earth/sand", 1, floor)) %>%
+  mutate(floor  = ifelse(v127=="palm / bamboo" 
+                         | v127=="palm, bamboo"                              
+                         | v127=="bamboo"                                    
+                         | v127=="Palm, bamboo"                              
+                         | v127=="palm/bambou"                               
+                         | v127=="palm / bamboo"                             
+                         | v127=="palm/bamboo"                               
+                         | v127=="Palm/ bamboo"                              
+                         | v127=="Wood planks, bamboo, plam"                  # not sure if bamboo or wood planks category
+                         | v127=="palm, bamboo, leeds"                       
+                         | v127=="palm/bamboo/leeds"                         
+                         | v127=="palm/bamboo/leaves"
+                         | v127=="palm/ bamboo"
+                         | v127=="reed, bamboo"                              
+                         | v127=="cane"                                      
+                         | v127=="reed / bamboo"                             
+                         | v127== "palm/bamboo", 2, floor)) %>% 
+  mutate(floor  = ifelse(v127=="raw wood planks" 
+                         | v127=="floor wood planks"                         
+                         | v127=="bare wood planks"                          
+                         | v127=="wood"                                      
+                         | v127=="wood bats (\"tacos de madeira\")"          
+                         | v127=="planks"   
+                         | v127=="rudimentary floor - wood planks"
+                         | v127=="wood planks, palm, bamboo"
+                         | v127=="wood/palm/bamboo"
+                         | v127=="Wood planks, bamboo, plam"                  # not sure 
+                         | v127=="rudimentary floor wood planks"             
+                         | v127=="rudimentary wood planks"                   
+                         | v127=="rudimentary - wood planks"                 
+                         | v127=="bois/autres vÃ©gÃ©taux"                     # wood/other plants
+                         | v127=="Wood plank"                                
+                         | v127=="Wood planks"                               
+                         | v127=="wood planks"   
+                         | v127=="wood plank"
+                         | v127=="wood planks, bamboo, plam"
+                         | v127=="bois/autres végétaux" 
+                         | v127=="house boat"
+                         | v127=="21"                                        
+                         | v127=="22", 2, floor)) %>% 
+  mutate(floor  = ifelse(v127=="brick"                                      
+                         | v127=="cement / bricks"                            # not sure if cement or brick category
+                         | v127=="bricks without cement"                     
+                         | v127=="broken bricks"  
+                         | v127=="tiles/ bricks"
+                         | v127=="bricks"                                    
+                         | v127=="brick/concrete"                            
+                         | v127=="Adobe"
+                         | v127=="adobe", 3, floor)) %>% 
+  mutate(floor  = ifelse(v127=="cement"                                      
+                         | v127=="ciment"   
+                         | v127=="cement, concrete"
+                         | v127=="cement, tiles"
+                         | v127=="cement/ tile"
+                         | v127=="cement/brick"
+                         | v127=="cement/gravel"
+                         | v127=="stone, brick"
+                         | v127=="cement / bricks"                            # not sure 
+                         | v127=="cement screed"                             
+                         | v127=="cement tiles"                              
+                         | v127=="cement tiles (mosaic)"                     
+                         | v127=="cement/concrete"                           
+                         | v127=="concrete/cement"                           
+                         | v127=="concrete, cement"                          
+                         | v127=="Concrete, cement"                          
+                         | v127=="cement screed"                             
+                         | v127=="concrete cement"    
+                         | v127=="ceramic tiles/terazzo"
+                         | v127=="cement tiles/mosaic"
+                         | v127=="cements"
+                         | v127=="granite"
+                         | v127=="Cements"                                  
+                         | v127=="Cement"                                    
+                         | v127=="concrete"                                  
+                         | v127=="finished - cement", 3, floor)) %>%
+  mutate(floor = ifelse(v127=="vinyl or asphalt strips"                     
+                        | v127=="asphlat tiles/vynil"                        
+                        | v127=="Asphlat tiles/vynil"                        
+                        | v127=="vinyl or aspalt strips"                     
+                        | v127=="vinyl or asphalt"                           
+                        | v127=="vinyl,asphalt strips"                       
+                        | v127=="Vinyl, asphalt strips"                      
+                        | v127=="vinyl /asphalt strips"                      
+                        | v127=="Vinyl/ asphalt strips"
+                        | v127=="vinyl/ asphalt strips"
+                        | v127=="vinyl"                                      
+                        | v127=="vinyl or linoleum"                          
+                        | v127=="vinyl, linoleum"                            
+                        | v127=="vinyl tile/vinyl carpet"                    
+                        | v127=="vinyl, asphalt strips"                      
+                        | v127=="Floor mat, linoleum, vinyl"                 
+                        | v127=="floor mat/linoleum/vinyl"                   
+                        | v127=="vinyl(pvc) or asphalt strips"               
+                        | v127=="vinyl (pvc) or asphalt strips"              
+                        | v127=="finished - vinyl or asphalt strips"         
+                        | v127=="floor mat, linoleum, vinyl"                 
+                        | v127=="vinyl sheets/tiles"                         # not sure if vinyl or tiles cat
+                        | v127=="vinyl tile/vinyl carpet" 
+                        | v127=="vinyl / asphalt strips"
+                        | v127=="vinyl or alphalt strips"
+                        | v127=="vinyl,  linoleum"
+                        | v127=="vinyl, linoleum, ceramic"
+                        | v127=="vinyl/asphalt strips"
+                        | v127=="vynil or asphalt strips"
+                        | v127=="lino/gerflex"
+                        | v127=="linoleum, carpet"
+                        | v127=="linoleum"                                   
+                        | v127=="linoleum/rubber carpet", 4, floor)) %>% 
+  mutate(floor  = ifelse(v127=="laminated or polished wood"                 
+                         | v127=="parquet or polished wood"                  
+                         | v127=="Parquet or polished wood"                  
+                         | v127=="parquet, polished wood"                   
+                         | v127=="parquet,polished wd"                       
+                         | v127=="parquet, polished wd"                      
+                         | v127==" parquet, polished wood"                   
+                         | v127=="parquet /polish wood"                      
+                         | v127=="Parquet/ polished wood"                    
+                         | v127=="Parquet, polished wood"                    
+                         | v127=="finished floor parquet or polished wood"   
+                         | v127=="finished - parquet or polished wood"   
+                         | v127=="finished floor - parquet or polished wood or laminate"
+                         | v127=="finished floor - vinyl or linoleum"
+                         | v127=="parket"
+                         | v127=='"machimbre" / parquet'
+                         | v127=="parquet / polished wood"
+                         | v127=="parquet/ polished wood"
+                         | v127=="parquet/polished wood"
+                         | v127=="polished wood, parquet"
+                         | v127=="31"                                         # finished
+                         | v127=="32"                                         # finished
+                         | v127=="33"                                         # finsihed 
+                         | v127=="34"                                         # finsihed 
+                         | v127=="35"                                         # finished 
+                         | v127== "polished wood", 5, floor)) %>% 
+  mutate(floor  = ifelse(v127=="ceramic mosaics"                             
+                         | v127=="mosaic or tiles"                           
+                         | v127=="ceramic tiles"                             
+                         | v127=="Ceramic tiles"                             
+                         | v127=="Ceramic tiles/Terazzo"                     
+                         | v127=="ceramic tiles/terrazo"                     
+                         | v127=="ceramic/terrazzo tiles"                    
+                         | v127=="ceramic tiles/ terrazo tiles"              
+                         | v127=="ceramic tiles, terazzo"                   
+                         | v127=="ceramic/marble/porcelain tiles / terrazo" 
+                         | v127=="chips/terrazzo"                            
+                         | v127=="mosaic/ceramic"                            
+                         | v127=="tile"                                      
+                         | v127=="tiles"                                     
+                         | v127=="cement tiles/brick"                         # not sure
+                         | v127=="ceramic tiles/coastal brick"               
+                         | v127== "brick tiles"                               # not sure if tiles or brick cat
+                         | v127=="finished - ceramic tiles"                  
+                         | v127=="carrelage"                                  # floor tile
+                         | v127=="ceramic"
+                         | v127=="ceramic tiles, marble chips"
+                         | v127=="ceramic tiles, vinyl, bricks"
+                         | v127=="ceramic tyles"
+                         | v127=="ceramic/ marble tile"
+                         | v127=="ceramic/ marmol"
+                         | v127=="ceramic/marble tiles"
+                         | v127=="ceramic/marble tiles tiles"
+                         | v127=="ceramic/marble/granite"
+                         | v127=="ceramics tiles"
+                         | v127=="granite / marble / ceramic"
+                         | v127=="granite, ceramic tiles"
+                         | v127=="marble, ceramic tile"
+                         | v127=="finished floor - carpeted"
+                         | v127=="finished floor - cement"
+                         | v127=="finished floor - ceramic or marble tiles"
+                         | v127=="chips/terrazo"
+                         | v127=="tile, ceramic"
+                         | v127=="tile/ cement"
+                         | v127=="terrazo"
+                         | v127=="terrazzo"
+                         | v127=="Tiles/ bricks", 5, floor)) %>%
+  mutate(floor = ifelse(v127=="marble"                                       
+                        | v127=="marble/ceramic tiles"                       
+                        | v127=="marble/granite"                             
+                        | v127=="polished stone/marble/granite", 5, floor)) %>%
+  mutate(floor = ifelse(v127=="other"                                        
+                        | v127=="Other"                                      
+                        | v127=="autre"                                      
+                        | v127=="OTHER"                                      
+                        | v127=="other finished"                             
+                        | v127=="autres matÃ©riaux moderne"                  # other modern materials
+                        | v127=="floating house", 5, floor)) %>% 
+  mutate(floor  = ifelse(v127=="carpeted"                                     
+                         | v127=="carpet"                                    
+                         | v127=="Carpet"
+                         | v127=="carpet/ rug"
+                         | v127=="wall to wall carpet"
+                         | v127=="rug, carpet"
+                         | v127=="woolen carpets/synthetic carpets"
+                         | v127=="mats"                                       
+                         | v127=="mat"                                       
+                         | v127=="Carpet/ rug"                               
+                         | v127=="finished - carpet"                         
+                         | v127=="woolen carpets/ synthetic carpet"          
+                         | v127=="autres matériaux moderne", 5, floor)) %>% 
+  mutate(floor = ifelse(v127=="not a de jure resident"                       
+                        | v127=="Not a de jure resident"                     
+                        | v127=="not a dejure resident"                      
+                        | v127=="Not a dejure resident"                      
+                        | v127=="not de-jure resident"                       
+                        | v127=="not de jure"                                
+                        | v127=="Not de jure"                                
+                        | v127=="not de jure resident"                       
+                        | v127=="not dejure resident"                        
+                        | v127=="Not dejure resident" 
+                        | v127=="not a de jure member"
+                        | v127=="not dejure member"
+                        | v127=="97"                                         
+                        | v127=="99", NA, floor))
+```
+
+## Wall
+
+```{r}
+# freq(df_dhs_IR_comp_cases$v128)
+# freq(df_dhs_IR_comp_cases$wall)
+```
+### This code will turn any non-dejure residents to NA
+```{r wall}
+df_dhs_IR_comp_cases <- df_dhs_IR_comp_cases %>% 
+  #Wall material
+  mutate(wall = v128) %>% 
+  mutate(wall = ifelse(v128=="no walls"                              
+                       | v128=="No walls"
+                       | v128=="without walls"
+                       | v128=="dirt"                                
+                       | v128=="Dirt"                                
+                       | v128=="mud"                                 
+                       | v128=="sod"                                 
+                       | v128=="earth" 
+                       | v128=="animal dung"
+                       | v128=="dung"
+                       | v128=="hair/wool/cloth"
+                       | v128=="estera"
+                       | v128=="makeshift/cardboard/reused material"
+                       | v128=="thatched"                            
+                       | v128=="natural - mud"                       
+                       | v128=="mud/sand"                            
+                       | v128=="mud/stones"                          
+                       | v128=="dirt/mud"                            
+                       | v128=="dung / mud / sod"                    
+                       | v128=="grass"                               
+                       | v128=="Grass"                             
+                       | v128=="grass/reeds/thatch"
+                       | v128=="sticks with mud/clay/dung"
+                       | v128=="thatch/bamboo/wood/mud"
+                       | v128=="tree trunks"
+                       | v128=="interwoven sticks or reeds and mud ('bajareque')"
+                       | v128=="trunks with mud"                     
+                       | v128=="cane / palm / trunks"                
+                       | v128=="Cane / palm / trunks"                
+                       | v128=="natural walls cane/tree trunks"       # not sure 
+                       | v128=="cane/tree trunks"                    
+                       | v128=="cane/palm/trunks/reed"               
+                       | v128=="cane/palm/trunks"                    
+                       | v128=="cane, palm tree, trunks"             
+                       | v128=="Cane/palm/trunks"                    
+                       | v128=="Cane/ palm/ trunks"                  
+                       | v128=="Cane/Palm/Trunks"                    
+                       | v128=="natural - cane / trunks"             
+                       | v128=="tree trunks with mud and cement"      # not sure
+                       | v128=="cane/palm/trunks/leaves"             
+                       | v128=="cane/tree trunks"                     
+                       | v128=="cane/trunks"   
+                       | v128=="cane/ palm/ trunks"
+                       | v128=="palm leaves"
+                       | v128=="straw"
+                       | v128=="casca"
+                       | v128=="masica sticks"
+                       | v128=="straw with mud"                       
+                       | v128=="tatchd/straw"                        
+                       | v128=="thatched/straw"                      
+                       | v128=="straw, thatch mats"                  
+                       | v128=="Straw, thatch mats"                  
+                       | v128=="straw/thatch mats"                   
+                       | v128=="Straw"
+                       | v128=="mud blocks"
+                       | v128=="mud or mud bricks"
+                       | v128=="slag"
+                       | v128=="yagua"
+                       | v128=="natural walls"
+                       | v128=="rudimentary walls"
+                       | v128=="wood and grass"                       # not sure 
+                       | v128=="Masica sticks"                        # not sure 
+                       | v128=="Sticks (paus maticados)"              # not sure
+                       | v128=="11"                                   # natural
+                       | v128=="12"                                   # natural 
+                       | v128=="13"                                   # natural 
+                       | v128=="sod" , 1, wall)) %>%
+  mutate(wall = ifelse(v128=="canvas/tent"                               #this category seems to represent poorer households, maybe it should be moved up to wall2?
+                       | v128=="cardboard"                           
+                       | v128=="Cardboard"  
+                       | v128=="cardboard, plastic" 
+                       | v128=="tin/ cardborad/ paper/ bags"
+                       | v128=="cardboard/plastic"
+                       | v128=="paperboard"
+                       | v128=="plastic / cardboard"
+                       | v128=="zinc, canvas, plastics"
+                       | v128=="tent"
+                       | v128=="waste materials"
+                       | v128=="plastic"
+                       | v128=="sheet"                               
+                       | v128=="tarpaulin"                           
+                       | v128=="Tin/ cardborad/ paper/ bags"         
+                       | v128=="tin/cardborad/paper/bags"
+                       | v128=="waste material"                      
+                       | v128=="carton"                              
+                       | v128=="Casca"                                #not sure
+                       | v128=="Shells (Casca)"              
+                       | v128=="makeshift/cardboard", 1, wall)) %>% 
+  mutate(wall = ifelse(v128=="pau-a-pique"                           
+                       | v128=="\"pau-a-pique\""                     
+                       | v128=="pole with mud"                       
+                       | v128=="poles with mud"                      
+                       | v128=="Poles and mud"                       
+                       | v128=="trunks with mud"
+                       | v128=="poles and mud"
+                       | v128=="mud and pole"                        
+                       | v128=="mud and poles"                       
+                       | v128=="mud and sticks"                      
+                       | v128=="Mud and sticks"                      
+                       | v128=="wattle and daub"                     
+                       | v128=="adobe not covered/bamboo/wood with mud"                                 
+                       | v128=="Uncovered adobe"                     
+                       | v128=="uncovered adobe", 1, wall)) %>% 
+  mutate(wall = ifelse(v128=="bamboo"                                
+                       | v128=="bamboo with mud"                     
+                       | v128=="Bamboo with mud"                     
+                       | v128=="bamboo/wood with mud"                
+                       | v128=="bamboo / tree trunk with mud"        
+                       | v128=="bamboo/tree trunks with mud"         
+                       | v128=="bamboo / pole with mud"              
+                       | v128=="bamboo/cane/palm/trunks"             
+                       | v128=="bamboo/sticks/mud"
+                       | v128=='"tabique", "quinche"'
+                       | v128=="semi-dur"
+                       | v128=="semi-hard (hard or other)"
+                       | v128=="bamboo with mud plaster"
+                       | v128=="bamboo with mud/clay/dung"
+                       | v128=="bamboo without plaster"
+                       | v128=="bamboo(guadua), straw, other plants"
+                       | v128=="bambu with mud"
+                       | v128=="jute/bamboo/mud (katcha)"
+                       | v128=="bark / straw / palm / bamboo"
+                       | v128=="cane"
+                       | v128=="cane / palm / trunks/ bamboo"
+                       | v128=="cane/palm"
+                       | v128=="cane/palm/trunks/bamboo"             
+                       | v128=="cane/palm tree/sticks/bamboo"        
+                       | v128=="cane / trunks / bamboo / reed"       
+                       | v128=="cane/trunks/bamboo/reed"             
+                       | v128=="bamboo / wood wit"
+                       | v128=="tejamanil"
+                       | v128=="meshed bamboo"                       
+                       | v128=="palm, bamboo"  
+                       | v128=="palm"
+                       | v128=="palm branches"
+                       | v128=="palm/bamboo/thatch"                  
+                       | v128=="Bamboo/Cane/Palm/Trunks", 1, wall)) %>% 
+  mutate(wall = ifelse(v128=="corrugated iron/zinc"                  
+                       | v128=="corrugated metal"                    
+                       | v128=="corrugated iron sheets"              
+                       | v128=="galvanized iron/aluminum"            
+                       | v128=="gi/metal/asbestos sheets"            
+                       | v128=="iron sheets"                          
+                       | v128=="Metalic sheets"                      
+                       | v128=="metal"                               
+                       | v128=="metal/ galvanized sheet" 
+                       | v128=="rustic mat"
+                       | v128=="tin"                                 
+                       | v128=="zinc"                                
+                       | v128=="Zinc, metal"
+                       | v128=="metal / zinc"
+                       | v128=="metal sheets"
+                       | v128=="metalic sheets"
+                       | v128=="zinc, metal"
+                       | v128=="Metal / zinc"                        
+                       | v128=="zinc, metal [new code]"              
+                       | v128=="zinc/metal"
+                       | v128=="asbestos, wood, zinc"
+                       | v128=="asbestos/wood,zinc"
+                       | v128=="corrugated asbestos"
+                       | v128=="metal (iron or zinc sheet)"
+                       | v128=="Metal sheets", 2, wall))  %>% 
+  mutate(wall = ifelse(v128=="mud bricks with stones"
+                       | v128=="mixed brick"
+                       | v128=="mud bricks"                          
+                       | v128=="mudbrick"                            
+                       | v128=="Mud bricks"                          
+                       | v128=="mud with cement mix"                 
+                       | v128=="sun-dried bricks /mud bricks"        
+                       | v128=="Sun-dried bricks"                    
+                       | v128=="unbaked bricks/mud"                  
+                       | v128=="unbaked bricks"                      
+                       | v128=="unburnt brick"                       
+                       | v128=="unburnt bricks"                      
+                       | v128=="un-burnt bricks"                     
+                       | v128=="unburnt bricks with plaster"         
+                       | v128=="unburnt bricks with mud"             
+                       | v128=="un-burnt bricks and plaster"         
+                       | v128=="unburnt bricks with cement"          
+                       | v128=="unburnt bricks with plaster", 2, wall)) %>% 
+  mutate(wall = ifelse(v128=="adobe"                                 
+                       | v128=="Adobe"  
+                       | v128=="adobe (mud bricks)"
+                       | v128=="adobe (sun-dried brick)"
+                       | v128=="adobe with sod"
+                       | v128=='adobe/"tapial"'
+                       | v128=="adobe covered"                       
+                       | v128=="Covered adobe"                       
+                       | v128=="covered adobe with cement"             
+                       | v128=="covered adobe", 2, wall)) %>% 
+  mutate(wall = ifelse(v128=="stone with clay"
+                       | v128=="Stones with mud"                     
+                       | v128=="rudimentary - stone with mud"        
+                       | v128=="rudimentary walls stone with mud"    
+                       | v128=="stones with mud"
+                       | v128=="cut stone"
+                       | v128=="Stones"                               # not sure 
+                       | v128=="stone"                                # not sure 
+                       | v128=="stones"
+                       | v128=="natural stone"
+                       | v128=="cut stones"
+                       | v128=="mud stones"
+                       | v128=="Stone with mud"
+                       | v128=="21"                                   # rudimentary
+                       | v128=="22"                                   # rudimentary
+                       | v128=="23"                                   # rudimentary
+                       | v128=="24"                                   # rudimentary
+                       | v128=="26"                                   # rudimentary
+                       | v128=="stone with mud", 3, wall)) %>% 
+  mutate(wall = ifelse(v128=="plywood"                                         
+                       | v128=="raw/reused wood"
+                       | v128=="plywood sheets"
+                       | v128=="Plywood"                             
+                       | v128=="plywood, reused wood"                 # not sure
+                       | v128=="rudimentary - reused wood"           
+                       | v128=="Reused wood"                         
+                       | v128=="reused wood"                         
+                       | v128=="Plywood"                             
+                       | v128=="wood"
+                       | v128=="compressed wood"
+                       | v128=="wood planks"                          
+                       | v128=="Wood planks"
+                       | v128=="shingle (tejamanil)"
+                       | v128=="wood plank / shingles"
+                       | v128=="woods"     
+                       | v128=="planks"  
+                       | v128=="wood planks/ shingles"
+                       | v128=="wood poles"
+                       | v128=="wood, timer"
+                       | v128=="wood/ metal planks"
+                       | v128=="wood planks / shingles"              
+                       | v128=="Wood planks / shingles"              
+                       | v128=="Wood planks/ shingles"               
+                       | v128=="wood planks/shingles"                 
+                       | v128=="wood planks/shingles/metal/corrugated"
+                       | v128=="wood, timber"                        
+                       | v128=="Wood, timer"                         
+                       | v128=="timber"                              
+                       | v128=="rudimentary - plywood" 
+                       | v128=="polished wood"
+                       | v128=="finished - wood planks / shingles"  
+                       | v128=="31"                                   # finished
+                       | v128=="32"                                   # finished
+                       | v128=="33"                                   # finished
+                       | v128=="34"                                   # finished
+                       | v128=="35"                                   # finished
+                       | v128=="36"                                   # finished
+                       | v128=="Wood/ metal planks", 3, wall)) %>% 
+  mutate(wall = ifelse(v128=="baked bricks"                          
+                       | v128=="clay"                                
+                       | v128=="clay blocks"                         
+                       | v128=="Baked bricks"                        
+                       | v128=="bricks"                              
+                       | v128=="Bricks"                              
+                       | v128=="bricks (\"tijolos\")"                
+                       | v128=="burnt bricks"                        
+                       | v128=="finished bricks"                     
+                       | v128=="finished - bricks"                   
+                       | v128=="oven fired bricks"                   
+                       | v128=="oven fired bricks with cement"       
+                       | v128=="burnt bricks with cement"            
+                       | v128=="burnt bricks with mud"   
+                       | v128=="bare brick, cement blocks"
+                       | v128=="block/cements/bricks"
+                       | v128=="briks"
+                       | v128=="sun-dried bricks"
+                       | v128=="brick"
+                       | v128=="brick or stone"
+                       | v128=="brick/cement"
+                       | v128=="brick/cement blocks"
+                       | v128=="bricks/polished wood/premanufactured material"
+                       | v128=="Briks", 4, wall)) %>% 
+  mutate(wall = ifelse(v128=="cement"                                
+                       | v128=="Cement"                              
+                       | v128=="cement block"                        
+                       | v128=="cement block/concrete"               
+                       | v128=="cement blocks"                       
+                       | v128=="Cement bloks"                        
+                       | v128=="Cement blocks"                       
+                       | v128=="cement bricks"                       
+                       | v128=="cement hollow blocks"                
+                       | v128=="cement/concrete" 
+                       | v128=="cement blocks or panels"
+                       | v128=="cement blocks/cement"
+                       | v128=="cement blocks/cement stones"
+                       | v128=="cement/monolit"
+                       | v128=="parpaing / cement"
+                       | v128=="concrete"                            
+                       | v128=="cut stone and concrete"              
+                       | v128=="cement or stone blocks"              
+                       | v128=="finished - cement"                   
+                       | v128=="finished - cement blocks"            
+                       | v128=="finished walls cement"
+                       | v128=="cement bloks"
+                       | v128=="stone with cement"
+                       | v128=="stone with whitewash/cement"
+                       | v128=="prefabricated material"
+                       | v128=="prefab material"
+                       | v128=="walls cement", 4, wall)) %>% 
+  mutate(wall = ifelse(v128=="stone with lime / cement"              
+                       | v128=="stone with lime/cement"              
+                       | v128=="stome with lime / cement"            
+                       | v128=="Stone with lime/ cement"             
+                       | v128=="Stone with lime/cement"              
+                       | v128=="Stone with lime / cement"  
+                       | v128=="finished - stone with lime / cement" 
+                       | v128=="Stone with whitewash/cement" 
+                       | v128=="Stone blocks" 
+                       | v128=="stone blocks"
+                       | v128=="stone with cal or cement"
+                       | v128=="stone with lime or cement"
+                       | v128=="stone with lime/ cement"
+                       | v128=="stones with lime / cement"
+                       | v128=="other"                                 
+                       | v128=="Other"                               
+                       | v128=="OTHER", 4, wall)) %>% 
+  mutate(wall = ifelse(v128=="97"                                    
+                       | v128=="99", NA, wall)) %>% 
+  mutate(wall = ifelse(v128=="not a de jure resident"  
+                       | v128=="non de jure resident"
+                       | v128=="not a de jure household member"
+                       | v128=="not de jure resident"
+                       | v128=="not dejure member"
+                       | v128=="visitor - dont know"
+                       | v128=="Not a de jure resident"              
+                       | v128=="not a dejure resident"               
+                       | v128=="Not a dejure resident"               
+                       | v128=="not de-jure resident"                
+                       | v128=="not dejure resident"                 
+                       | v128=="Not dejure resident", NA, wall ))
+```
+
+## Roof
+```{r}
+# freq(df_dhs_IR_comp_cases$v129)
+# freq(df_dhs_IR_comp_cases$roof)
+```
+
+
+```{r roof-material}
+df_dhs_IR_comp_cases <- df_dhs_IR_comp_cases %>% 
+  #Roof material
+  mutate(roof = v129) %>% 
+  mutate(roof = ifelse(v129=="no roof"                        
+                       | v129=="No roof" 
+                       | v129=="no roofing"
+                       | v129=="natural - no roof" 
+                       | v129=="waste material"
+                       | v129=="clods of earth"               
+                       | v129=="dung/ mud"                    
+                       | v129=="dung / mud / sod"             
+                       | v129=="mud/sod"                      
+                       | v129=="Grass/ thatch/ palm leaf"     
+                       | v129=="grass/palm"                   
+                       | v129=="grass/thatch/palm leaf"       
+                       | v129=="mud"                          
+                       | v129=="sod"                          
+                       | v129=="Sod"                          
+                       | v129=="straw"                          
+                       | v129=="mud bricks"                   
+                       | v129=="sod/grass"                    
+                       | v129=="sod/grass (cogon)"            
+                       | v129=="sod/mud and grass mixture"    
+                       | v129=="straw, palm"                  
+                       | v129=="thatch"                       
+                       | v129=="thatched"                     
+                       | v129=="thatch/grass"                 
+                       | v129=="thatch, grass"                
+                       | v129=="grass/thatch/mud"             
+                       | v129=="thatch / grass / makuti"      
+                       | v129=="thatch / palm leaf"           
+                       | v129=="Thatch / palm leaf"           
+                       | v129=="thatch / palm leaf / leaf"    
+                       | v129=="thatch/mud"                    
+                       | v129=="thatching/grass"              
+                       | v129=="thatch/palm leaf (nipa)"      
+                       | v129=="thatch/palm leaf"             
+                       | v129=="Thatch/palm leaf"             
+                       | v129=="thatch/palm/leaf"             
+                       | v129=="thatch/leaf/mud"               # not sure
+                       | v129=="thatch / palm leaf"           
+                       | v129=="Thatch/ palm leaf"            
+                       | v129=="Thatch/Palm leaf"             
+                       | v129=="thatch / leaf"                
+                       | v129=="Thatch/Palm/Leaves" 
+                       | v129=="palm branches"
+                       | v129=="palm leaf / thatched"
+                       | v129=="no walls"
+                       | v129=="earth"
+                       | v129=="earth/bamboo"
+                       | v129=="estera"
+                       | v129=="katcha (bamboo/thatch)"
+                       | v129=="bark / straw / palm / bamboo"
+                       | v129=="cana"
+                       | v129=="cane/ palm/ mud"   
+                       | v129=="grass"
+                       | v129=="leaves"
+                       | v129=="skin"
+                       | v129=="sticks with mud and dung"
+                       | v129=="straw and palm leaves"
+                       | v129=="thatch / straw"
+                       | v129=="thatch, palm leaf"
+                       | v129=="thatch/palm leaf/ grass"
+                       | v129=="thatch/palm/bamboo/bark }"
+                       | v129=="grass/ thatch/ palm leaf"
+                       | v129=="thatch/ palm leaf"
+                       | v129=="thatch/palm/leaves"
+                       | v129=="palm leave"
+                       | v129=="chaume/palme/feuilles"         # thatch/palm/leaves
+                       | v129=="thatch / grass / makuti"       
+                       | v129=="natural roofing thatch/grass" 
+                       | v129=="natural - thatch"             
+                       | v129=="\"pau-a-pique\""               # wattle & daub
+                       | v129=="11"                            # natural
+                       | v129=="12"                            # natural 
+                       | v129=="13"                            # natural 
+                       | v129=="Skin"                         
+                       | v129=="wattle and daub" , 1, roof)) %>% 
+  mutate(roof = ifelse(v129=="cardboard"                      
+                       | v129=="Cardboard"
+                       | v129=="carton" 
+                       | v129=="makeshift/cardboard", 1, roof)) %>% 
+  mutate(roof = ifelse(v129=="bamboo/thatch/palm leaf"         # review
+                       | v129=="palm / bamboo / mats"         
+                       | v129=="palm / bamboo / grass"        
+                       | v129=="palms/bamboo"
+                       | v129=="bamboo or rustic mat with mud"
+                       | v129=="bamboo/sticks/mud"
+                       | v129=="bambu with mud"
+                       | v129=="palm"
+                       | v129=="palm bamboo"
+                       | v129=="palm/ bamboo"
+                       | v129=="palm/bamboo/thatch"
+                       | v129=="paywood"
+                       | v129=="reed/bamboo"                  
+                       | v129=="reed / bamboo"                 # not sure
+                       | v129=="palm / bamboo"                
+                       | v129=="bamboo"                       
+                       | v129=="Palm/bamboo"                  
+                       | v129=="Palm/ bamboo"                 
+                       | v129=="Palm / bamboo"                
+                       | v129=="Palm/Bamboo"                  
+                       | v129=="palme/bambou"                 
+                       | v129=="palm/bamboo", 2, roof)) %>%
+  mutate(roof = ifelse(v129=="canvas/tent"                    
+                       | v129=="tent"                         
+                       | v129=="tarpaulin"                    
+                       | v129=="Tarpaulin"                    
+                       | v129=="tarpaulin, plastic"           
+                       | v129=="Tarpaulin, plastic"           
+                       | v129=="taule (ruberoid)"  , 2, roof)) %>% 
+  mutate(roof = ifelse(v129=="mud bricks with stones"         
+                       | v129=="unburnt bricks"               
+                       | v129=="mud with cement mix", 2, roof)) %>% 
+  mutate(roof = ifelse(v129=="plastic"                         
+                       | v129=="plastic sheet"                
+                       | v129=="rustic material/plastic"      
+                       | v129=="rustic mat/plastic"           
+                       | v129=="rustic mat/plastic sheets"    
+                       | v129=="rustic mat / plastic sheets"  
+                       | v129=="mat"                          
+                       | v129=="Mat"                          
+                       | v129=="Rustic mat"
+                       | v129=="carton/plastic"
+                       | v129=="plaque from different materials"
+                       | v129=="plastic / cardboard"
+                       | v129=="plastic sheet/tent"
+                       | v129=="plastic/pvc"
+                       | v129=="natte"                         # mat
+                       | v129=="rustic mat"                   
+                       | v129=="rudimentary - rustic mat"      # not sure
+                       | v129=="plastic/polythene sheeting", 2, roof)) %>% 
+  mutate(roof = ifelse(v129=="loosely packed stone" , 2, roof)) %>% 
+  mutate(roof = ifelse(v129=="other"                          
+                       | v129== "OTHER"                       
+                       | v129=="banco"                         # not sure 
+                       | v129=="mobile roofs of nomads"        # not sure
+                       | v129=="Other" , 2, roof)) %>% 
+  mutate(roof = ifelse(v129=="wood"                           
+                       | v129=="Wood"                         
+                       | v129=="wood / mud"                   
+                       | v129=="planches en bois"              # wooden planks
+                       | v129=="wood panel"                    
+                       | v129=="wood planks"                  
+                       | v129=="wood/planks"                  
+                       | v129=="Wood planks"                 
+                       | v129=="finished - wood"              
+                       | v129=="rudimentary roofing wood planks"
+                       | v129=="rudimentary - wood planks"    
+                       | v129=="22"                            # rudimentary
+                       | v129=="23"                            # rudimentary
+                       | v129=="24"                            # rudimentary
+                       | v129=="raw wood planks/timber" , 2, roof)) %>% 
+  mutate(roof = ifelse(v129=="asbestos"                        
+                       | v129=="Asbestos"                     
+                       | v129=="asbestos sheet"               
+                       | v129=="asbestos sheets" 
+                       | v129=="asbesto"
+                       | v129=="asbestos, wood, zinc"
+                       | v129=="asbestos/zinc"
+                       | v129=="asbestos/cement fiber"         
+                       | v129=="asbestos sheets, shingles"   
+                       | v129=="Asbestos sheets, shingles"    
+                       | v129=="asbestos sheets/roofing shingles"  
+                       | v129=="Roofing shingles"              # not sure 
+                       | v129=="calamine / cement fiber (asbestos)" # not sure
+                       | v129=="asphalt, asbestos"             # not sure
+                       | v129=="finished - asbestos"          
+                       | v129=="asbestos/slate roofing sheets", 3, roof)) %>% 
+  mutate(roof = ifelse(v129=="corrugated iron/zinc"           
+                       | v129=="corrugated iron"              
+                       | v129=="corrugated iron/metal"        
+                       | v129=="corregated iron (mabati)"     
+                       | v129=="finished roofing metal"       
+                       | v129=="galvanized sheet/metal"       
+                       | v129=="iron sheets"                  
+                       | v129=="Iron sheets"                  
+                       | v129=="metal sheet"                  
+                       | v129=="finished - metal"
+                       | v129=="iron sheets/asbestos"
+                       | v129=="corrugate iron"
+                       | v129=="corrugated asbestos"
+                       | v129=="corrugated iron sheet"
+                       | v129=="galvanized iron/aluminium }"
+                       | v129=="galvanized iron/aluminum"
+                       | v129=="metal and ceiling"
+                       | v129=="metal only"
+                       | v129=="metal/ zink"
+                       | v129=="t-iron/wood/brick"
+                       | v129=="zinc"
+                       | v129=="metal"                        
+                       | v129=="Metal"                        
+                       | v129=="metalic sheets"               
+                       | v129=="metal/iron sheets"            
+                       | v129=="metal / iron sheet"           
+                       | v129=="metal / iron sheets"          
+                       | v129=="metal/ corrugated iron"       
+                       | v129=="metal/corrugated"             
+                       | v129=="metal/galvanized iron/alumi"  
+                       | v129=="metal/gi"                     
+                       | v129=="metal/zinc"                   
+                       | v129=="metal/ zinc"                  
+                       | v129=="tôle"                         
+                       | v129=="tin"                          
+                       | v129=="tins"                         
+                       | v129=="tin cans"                     
+                       | v129=="zinc / cement fiber"
+                       | v129=="zinc, metal, aluminum"        
+                       | v129=="zinc/metal/aluminum"          
+                       | v129=="zinc plates"                  
+                       | v129=="zinc/cement fiber"            
+                       | v129=="zinc, metal"                  
+                       | v129=="Zinc/cement fiber"            
+                       | v129=="tÃ´le"                         # metal sheet
+                       | v129=="zinc/metal"  , 3, roof)) %>% 
+  mutate(roof = ifelse(v129=="bricks"                         
+                       | v129=="burnt brick" , 4, roof)) %>% 
+  mutate(roof = ifelse(v129=="calamine / cement fiber"        
+                       | v129=="Calamine/ cement fiber"       
+                       | v129=="Calamine / cement fiber"      
+                       | v129=="calamine/cement fiber"         
+                       | v129=="calamine / cement fiber (asbestos)"  # not sure
+                       | v129=="calamine/cement fibre" , 4, roof)) %>% 
+  mutate(roof = ifelse(v129=="cement"                         
+                       | v129=="Cement"                       
+                       | v129=="finished - cement"            
+                       | v129=="cement fiber"
+                       | v129=="cement tiles"
+                       | v129=="cement/rcc"                   
+                       | v129=="concrete"                     
+                       | v129=="Concrete"                     
+                       | v129=="concrete slab"                       
+                       | v129=="dalles en béton"              
+                       | v129=="cement/concrete"              
+                       | v129=="concrete/cement"              
+                       | v129=="cement / concrete"            
+                       | v129=="concrete, cement"             
+                       | v129=="Concrete, cement"             
+                       | v129=="Concrete slab/ cement"  
+                       | v129=="cement/beton blocks"
+                       | v129=="cement/concrete/tiled"
+                       | v129=="losade hormigon armado"
+                       | v129=="brick/concrete"
+                       | v129=="concret"
+                       | v129=="reinforced concrete"
+                       | v129=="concrete plaque"
+                       | v129=="calamina/ plancha"
+                       | v129=="calamine /fibre of cement"
+                       | v129=="calamine/ cement fiber"
+                       | v129=="rcc/rbc/cement/concrete"      
+                       | v129=="reinforced brick cement/rcc"  
+                       | v129=="schiefer/cement fiber"        
+                       | v129=="dalles en bÃ©ton"              # concrete slabs
+                       | v129=="31"                            # finished
+                       | v129=="32"                            # finished
+                       | v129=="33"                            # finished
+                       | v129=="34"                           
+                       | v129=="35"                            # finished
+                       | v129=="slab"  , 4, roof)) %>% 
+  mutate(roof = ifelse(v129=="ceramic tiles"                  
+                       | v129=="Ceramic tiles"                
+                       | v129=="clay tiles"                   
+                       | v129=="mud tiles"                    
+                       | v129=="ceramic/clay tiles"           
+                       | v129=="roofing shingles"             
+                       | v129=="roofing shingles soft"        
+                       | v129=="shingles"                     
+                       | v129=="Roofing shingles"
+                       | v129=="ceramic tiles/brick tiles"
+                       | v129=="ceramic/brick tiles"
+                       | v129=="roofing shingles/shifer"
+                       | v129=="teja"
+                       | v129=="tejas"
+                       | v129=="tar"
+                       | v129=="taule"
+                       | v129=="taule (tarred rough paper)"
+                       | v129=="tuale (tarred roofing paper)"
+                       | v129=="tuile"
+                       | v129=="slate"                        
+                       | v129=="finished - tiles"             
+                       | v129=="ceramic tiles/harvey tiles"   
+                       | v129=="ceramic tiles / harvey tiles" 
+                       | v129=="tile (mud/ceramic/concrete)"  
+                       | v129=="local tiling"                 
+                       | v129=="roofing tiles"                
+                       | v129=="industrial tiles"             
+                       | v129=="tiles" 
+                       | v129=="tile"
+                       | v129=="tile (tole)"
+                       | v129=="tile (tuile)"
+                       | v129=="tiles / slates"
+                       | v129=="tiles/cement/concrete/fibrous }"
+                       | v129=="Tiles"                        
+                       | v129=="tole"                          #tile 
+                       | v129=="tuiles/ardoise/eternit"        #tiles, slate, eternit
+                       | v129=="Tiles/slate"                  
+                       | v129=="tiles/slate"  , 4, roof)) %>% 
+  mutate(roof = ifelse(v129=="97"                             
+                       | v129=="99", NA, roof)) %>% 
+  mutate(roof = ifelse(v129=="not a de jure resident"
+                       | v129=="non de jure resident"
+                       | v129=="not a de jure household member"
+                       | v129=="not de jure resident"
+                       | v129=="not dejure member"
+                       | v129=="visitor, dont know"
+                       | v129=="Not a de jure resident"       
+                       | v129=="not a dejure resident"        
+                       | v129=="Not a dejure resident"        
+                       | v129=="not de-jure resident"         
+                       | v129=="not dejure resident"          
+                       | v129=="Not dejure resident", NA, roof))
+```
+
+## Cooking Fuel
+```{r}
+# freq(df_dhs_IR_comp_cases$v161)
+# freq(df_dhs_IR_comp_cases$fuel)
+```
+
+```{r fuel}
+df_dhs_IR_comp_cases <- df_dhs_IR_comp_cases %>%  
+  #cooking fuel
+  mutate(fuel = v161) %>% 
+  mutate(fuel = ifelse(v161=="coal, lignite"                 
+                       | v161=="Coal, lignite"               
+                       | v161=="coal/lignite"                
+                       | v161=="briquette"                    #solid, biofuel subst for coal/charcoal
+                       | v161=="charcoal"                    
+                       | v161=="Charcoal"                    
+                       | v161=="cardboard/paper"             
+                       | v161=="straw/shrubs/grass"          
+                       | v161=="Straw/shrubs/grass"          
+                       | v161=="straw / shrubs / grass"      
+                       | v161=="Straw / shrubs / grass"      
+                       | v161=="maize or other crop waste"   
+                       | v161=="agricultural crop"           
+                       | v161=="Agricultural crop"           
+                       | v161=="crop waste"                  
+                       | v161=="saw dust"                    
+                       | v161=="sawdust/wood chips"          
+                       | v161=="firewood/straw"              
+                       | v161=="firewood, straw"             
+                       | v161=="wood chips"                  
+                       | v161=="animal dung"                 
+                       | v161=="Animal dung"                 
+                       | v161=="dung"
+                       | v161=="improved smokeless chulo"
+                       | v161=="coal, wood"
+                       | v161=="firewood, charcoal"
+                       | v161=="crop residue/grass"
+                       | v161=="mineral coal"
+                       | v161=="sawdust / wood chips"
+                       | v161=="traditional firewood/charcoal/dung"
+                       | v161=="wood"                        
+                       | v161=="9"                            # Straw/shrubs/grass
+                       | v161=="Wood", 1, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="biogas"                        
+                       | v161=="Biogas"                      
+                       | v161=="bottled gas"                 
+                       | v161=="Bottled gas"                 
+                       | v161=="natural gas"                 
+                       | v161=="Natural gas"                 
+                       | v161=="natural gas/biogas"
+                       | v161=="cylinder gas"
+                       | v161=="gasoline"
+                       | v161=="propane gas"
+                       | v161=="kerosene, oil, cocinol, diesel, gasoline, alcohol" , 2, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="electricity"                   
+                       | v161=="Electricity"                 
+                       | v161=="electricity from generator"  
+                       | v161=="electricity from other source", 2, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="kerosene"                      
+                       | v161=="Kerosene"                    
+                       | v161=="paraffin"                    
+                       | v161=="kerosene/paraffin"           
+                       | v161=="paraffin/kerosine"              
+                       | v161=="parafin/ kerosene"           
+                       | v161=="jelly"                        # not sure
+                       | v161== "petroleum/kerosene", 2, fuel)) %>%  
+  mutate(fuel = ifelse(v161=="lpg"                           
+                       | v161=="LPG"                          # not sure 
+                       | v161=="lpg/natural gas"             
+                       | v161=="lpg / natural gas"           
+                       | v161=="lpg, natural gas"            
+                       | v161=="lpg/cylinder gas", 2, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="solar energy"                  
+                       | v161=="solar power"                 
+                       | v161=="solar", 2, fuel)) %>%    
+  mutate(fuel = ifelse(v161=="other"                         
+                       | v161=="Other", 2, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="no food cooked in house" 
+                       | v161=="no cocina"
+                       | v161=="no food cooked in hh"        
+                       | v161=="no food cooked in household" 
+                       | v161=="No food cooked in household" 
+                       | v161=="do not cook"                 
+                       | v161=="does not cook"               
+                       | v161=="No food cooked in house", 2, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="97"                            
+                       | v161=="99", NA, fuel)) %>% 
+  mutate(fuel = ifelse(v161=="not a de jure resident"        
+                       | v161=="Not a de jure resident"      
+                       | v161=="not a dejure resident"       
+                       | v161=="Not a dejure resident"       
+                       | v161=="not de-jure resident"        
+                       | v161=="not dejure resident"         
+                       | v161=="Not dejure resident"         
+                       | v161=="not dejure member", NA, fuel ))
+
+```
+
+## Asset Ownership
+```{r assets}
+## NOTE: some missing obs - can we impute them? for now missing obs are assumed to be 0!
+df_dhs_IR_comp_cases <- df_dhs_IR_comp_cases %>% 
+  #Assets - electricity, radio, TV, fridge, bicycle, motorbike, car
+  mutate(electricity = ifelse(v119=="not a dejure resident", NA,
+                              ifelse((v119 == "yes" | v119 == "Yes"), 1, 0)))  %>% 
+  mutate(radio = ifelse(v120 =="not a dejure resident", NA,
+                              ifelse((v120 == "yes" | v120 == "Yes"), 1, 0)))  %>%
+  mutate(tv = ifelse(v121=="not a dejure resident", NA,
+                              ifelse((v121 == "yes" | v121 == "Yes"), 1, 0)))  %>%
+  mutate(fridge = ifelse(v122 =="not a dejure resident", NA,
+                              ifelse((v122 == "yes" | v122 == "Yes"), 1, 0)))  %>%
+  mutate(bike = ifelse(v123 =="not a dejure resident", NA,
+                              ifelse((v123 == "yes" | v123 == "Yes"), 1, 0)))  %>%
+  mutate(motorbike = ifelse(v124 =="not a dejure resident", NA,
+                              ifelse((v124 == "yes" | v124 == "Yes"), 1, 0)))  %>%
+  mutate(car = ifelse(v125 =="not a dejure resident", NA,
+                              ifelse((v125 == "yes" | v125 == "Yes"), 1, 0)))  %>%
+  mutate(telephone = ifelse(v153 =="not a dejure resident", NA,
+                              ifelse((v153 == "yes" | v153 == "Yes"), 1, 0)))
+```
+
+
+
+# Perform PCA
+```{r}
+library(factoextra)
+```
+
+## Create a uid for all cases in the raw dataset
+```{r}
+df_dhs_IR_comp_cases <- df_dhs_IR_comp_cases %>% 
+  mutate(uid = row_number())
+```
+
+
+## Create a smaller dataset with key variables and drop missing values
+```{r}
+## there should be no missing values
+df_pca <- df_dhs_IR_comp_cases %>% 
+  dplyr::select(uid, floor, wall, roof, electricity, radio, tv, fridge, bike, motorbike, car, telephone) %>% 
+  na.omit()
+
+nrow(df_pca)
+nrow(df_dhs_IR_comp_cases)
+```
+
+## Check the variable type of all variables
+```{r}
+## all variables should be numeric
+str(df_pca)
+sapply(df_pca, typeof)
+```
+
+## Run the PCA model
+```{r}
+model_pca <- prcomp(df_pca[, -1], scale = TRUE)
+# plot the eigen values
+fviz_eig(model_pca)
+```
+## Predict the scores from the PCA
+```{r}
+df_pca_pred <- as.data.frame(predict(model_pca, newdata = df_pca))
+head(df_pca_pred)
+dim(df_pca_pred)
+```
+
+## Retain the first component
+```{r}
+df_pca_pred <- df_pca_pred %>% 
+  dplyr::select(PC1) %>% 
+  rename(wealth_score_new = PC1)
+head(df_pca_pred)
+```
+
+## Merge this with the dataset with all assets
+```{r}
+df_pca$wealth_score_new <- -(df_pca_pred$wealth_score_new)
+```
+
+## Shorter dataset for the merge
+```{r}
+df_pca <- df_pca %>% 
+  select(uid, wealth_score_new)
+```
+
+
+## Merge this with the raw IR dataset from DHS
+```{r}
+df_dhs_IR_new_sli <- df_dhs_IR_comp_cases %>% 
+  left_join(df_pca, by = "uid")
+head(df_dhs_IR_new_sli)
+```
+
+## Create wealth quintile
+```{r}
+df_dhs_IR_new_sli <- df_dhs_IR_new_sli %>% 
+  # mutate(wealth_score_new = -wealth_score_new) %>% 
+  mutate(wealth_quintile_new_temp = ntile(wealth_score_new, 5)) %>% 
+  mutate(wealth_quintile_new = case_when(wealth_quintile_new_temp == 1 ~ "poorest", 
+                                         wealth_quintile_new_temp == 2 ~  "poorer", 
+                                         wealth_quintile_new_temp == 3 ~ "middle", 
+                                         wealth_quintile_new_temp == 4 ~  "richer",
+                                         wealth_quintile_new_temp == 5 ~  "richest")) %>% 
+  mutate(wealth_quintile_new = fct_relevel(wealth_quintile_new, "poorest", "poorer", 
+                                                  "middle", "richer", "richest")) %>% 
+  select(-wealth_quintile_new_temp) %>% 
+  select(starts_with("hh_wealth"), starts_with("wealth"), everything()) %>% 
+  arrange(hh_wealth_quintile_og)
+
+```
+
+
+```{r}
+View(df_dhs_IR_new_sli)
+```
+
+
+## Crosstab to check
+```{r}
+with(df_dhs_IR_new_sli, ctable(hh_wealth_quintile_og, wealth_quintile_new, totals = F))
+```
+
+
