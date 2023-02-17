@@ -4,170 +4,181 @@ format: html
 editor: visual
 ---
 
-####### This script takes the dataframe created in the previous data-processing file (1.1) that extracted daily climate data for each PSU and then creates climate related variables - first for each day and the summarizes that at the PSU level. 
+####### This script takes the dataframe created in the previous data-processing file (1.1) that extracted daily climate data for each PSU and then creates climate related variables - first for each day and the summarizes that at the PSU level.
 
 # load-packages
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+library(data.table)
 library(summarytools)
+library(beepr)
 ```
 
-# Create variable for year of temperature
-
+# Create temperature based variables
 ```{r}
-df_ana <- df_psu_tmax %>% 
-  # create outcome variables
-  ## day where temperature was greater than 35F
-  mutate(hotday_35 = ifelse(max_temp > 35, 1, 0)) %>% 
-  ## Day where the temperature was greater than the 95th percentile for that PSU over the last n years
-  ### First calculate the cutoff temperature for each PSU
-  group_by(psu) %>% 
-  mutate(cutoff_hot_95 = quantile(max_temp, probs = 0.95, na.rm = T)) %>% 
-  ### Identify days when the temperature was higher than the relative cutoff
-  mutate(hotday_95 = ifelse(max_temp >=  cutoff_hot_95, 1, 0)) %>% 
-  ## Identify days when it was either more than 35 or more than 95
-  mutate(hotday_35_95 = ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)) %>% 
-  ## Identify days when it was both 
-  mutate(hotday_both = ifelse(hotday_35 == 1 & hotday_95 == 1, 1, 0)) %>% 
-  # extract year from the date variable
-  mutate(year = format(as.Date(date), format = "%Y")) 
-
-# head(df_ana)
-# dim(df_ana)
+system.time(
+  df_psu_tmax_tmin_temp_vars_added <- df_psu_tmax_tmin[, hotday_35 := ifelse(max_temp > 35, 1, 0)
+      ][
+        , hotnight_20 := ifelse(min_temp > 20, 1, 0)
+      ][
+        , long_term_avg := mean(max_temp, na.rm = T), by = psu
+      ][
+        , hotday_long_avg := ifelse(max_temp > long_term_avg+5, 1, 0)
+      ][
+        , cutoff_hot_95 := quantile(max_temp, probs = 0.95, na.rm = T), by = psu
+      ][
+        , hotday_95 := ifelse(max_temp >=  cutoff_hot_95, 1, 0)
+      ][
+        , hotday_35_95 := ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)
+      ][
+        , hotday_both := ifelse((hotday_35 == 1 & hotday_95 == 1), 1, 0)
+      ][
+        , consec_nights_20 := ifelse(min_temp > 20, 1:.N, 0L), by = rleid(min_temp > 20)
+      ][
+        , consec_days_35 := ifelse(max_temp > 35, 1:.N, 0L), by = rleid(max_temp > 35)
+      ][
+        , consec_days_lt_avg := ifelse(hotday_long_avg == 1, 1:.N, 0L), by = rleid(hotday_long_avg == 1)
+      ][
+        , consec_days_95 := ifelse(hotday_95 == 1, 1:.N, 0L), by = rleid(hotday_95 == 1)
+      ][
+        , consec_days_35_95 := ifelse(hotday_35_95 == 1, 1:.N, 0L), by = rleid(hotday_35_95 == 1)
+      ][
+        , consec_days_both := ifelse(hotday_both == 1, 1:.N, 0L), by = rleid(hotday_both == 1)
+      ]
+)
+beep(sound = 3)
 ```
 
-## Outcome Variables
+## Save your work
 
 ```{r}
-df_ana <- df_ana %>% 
-  # day where temperature was greater than 35F
-  mutate(hotday_35 = ifelse(max_temp > 35, 1, 0)) %>% 
-  # Day where the temperature was greater than the 95th percentile for that PSU over the last n years
-  ## First calculate the cutoff temperature for each PSU
-  group_by(psu) %>% 
-  mutate(cutoff_hot_95 = quantile(max_temp, probs = 0.95, na.rm = T)) %>% 
-  ## Identify days when the temperature was higher than the relative cutoff
-  mutate(hotday_95 = ifelse(max_temp >=  cutoff_hot_95, 1, 0)) %>% 
-  ## Identify days when it was either more than 35 or more than 95
-  mutate(hotday_35_95 = ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)) %>% 
-  ## Identify days when it was both 
-  mutate(hotday_both = ifelse(hotday_35 == 1 & hotday_95 == 1, 1, 0)) 
+save(df_psu_tmax_tmin_temp_vars_added, file = "./bigdata/images-paper-1/1.2-a-dhs-psu-all-temp-vars-created-daily.RData")
+beep(sound = 3)
+head(df_psu_tmax_tmin_temp_vars_added, 1000)
 ```
 
-## Filter dataset for the year of interest
+# Filter dataset to period of interest
 
+## Define period of interest
 ```{r}
-df_ana_2022 <- df_ana %>% 
-  filter(year == "2022")
-dim(df_ana)
-dput(names(df_ana))
+start_date = as.Date("2022-01-01")
+end_date = as.Date("2022-12-31")
 ```
 
-## Summarize the outcome and predictor variables
-
+## Apply the filter
 ```{r}
-df_psu_hotdays <- df_ana_2022 %>% 
-  group_by(psu, .drop = F) %>% 
-  summarise(
-            # Outcome Variables
-            num_hot_days_35 = sum(hotday_35),
-            num_hot_days_95 = sum(hotday_95),
-            num_hot_days_35_95 = sum(hotday_35_95),
-            num_hot_days_both = sum(hotday_both),
-            long = mean(long),
-            lat = mean(lat),
-            state = first(state_name), 
-            district = first(district), 
-            rural = first(rural)) %>%  
-  # Arrange variables
-  dplyr::select(num_hot_days_35, num_hot_days_95, num_hot_days_35_95,num_hot_days_both, everything())
-  
-  
-head(df_psu_hotdays)
-# dim(df_psu_hotdays)
-# freq(df_psu_hotdays$num_hot_days_35_cat)
-# freq(df_psu_hotdays$num_hot_days_95_cat)
+df_psu_tmax_tmin_2022 <- df_psu_tmax_tmin_temp_vars_added[date >= as.IDate(start_date) & date <= as.IDate(end_date)]
+dim(df_psu_tmax_tmin_2022)
+```
+## Save work
+```{r}
+save(df_psu_tmax_tmin_2022, file = "./bigdata/images-paper-1/1.2-b-dhs-psu-all-temp-vars-created-daily-2022.RData")
+beep(sound = 3)
+names(df_psu_tmax_tmin_2022)
+```
 
+# aggregate data at PSU level
+
+## first create variables for consecutive days
+```{r}
+df_psu_tmax_tmin_2022_consec <- df_psu_tmax_tmin_2022[
+  , num_consec_hot_nights_2 := ifelse(consec_nights_20 > 2, 1, 0), by = psu
+][
+  , num_consec_hot_days_35_3 := ifelse(consec_days_35 > 2, 1, 0), by = psu
+][
+  , num_consec_hot_days_35_4 := ifelse(consec_days_35 > 3, 1, 0), by = psu
+][
+  , num_consec_hot_days_35_5 := ifelse(consec_days_35 > 4, 1, 0), by = psu
+][
+  , num_consec_long_avg_tmax_5 := ifelse(consec_days_lt_avg > 4, 1, 0), by = psu
+]
+names(df_psu_tmax_tmin_2022_consec)
+```
+## Now aggregate
+```{r}
+df_psu_tmax_tmin_2022_psu <- df_psu_tmax_tmin_2022_consec[,
+                  .(lat = first(lat),
+                    long = first(long),
+                    max_temp_avg = mean(max_temp),
+                    min_temp_avg = mean(min_temp),
+                    tmax_long_term_avg = mean(long_term_avg),
+                    num_hotday_long_avg = sum(hotday_long_avg),
+                    num_hotnight_20 = sum(hotnight_20),
+                    num_hotday_35 = sum(hotday_35),
+                    num_hotday_95 = sum(hotday_95),
+                    num_hotday_35_or_95 = sum(hotday_35_95),
+                    num_hotday_35_and_95 = sum(hotday_both),
+                    num_consec_hotdays_35_3 = sum(num_consec_hot_days_35_3),
+                    num_consec_hotdays_35_4 = sum(num_consec_hot_days_35_4),
+                    num_consec_hotdays_35_5 = sum(num_consec_hot_days_35_5),
+                    num_consec_long_avg_tmax_5 = sum(num_consec_long_avg_tmax_5)), 
+                  by = psu]
+head(df_psu_tmax_tmin_2022_psu)
+beep(sound = 3)
 ```
 
 ## Create categories for number of hot days
 
 ### Num hotdays - 35
 ```{r}
-df_psu_hotdays <- df_psu_hotdays %>% 
-  mutate(num_hot_days_35_cat = 
+df_psu_hotdays <- df_psu_tmax_tmin_2022_psu %>% 
+  mutate(num_hotday_35_cat = 
            case_when(
-              num_hot_days_35 == 0 ~ "None",
-              num_hot_days_35 > 0 & num_hot_days_35 < 31 ~ "31 days or less",
-              num_hot_days_35 > 30 & num_hot_days_35 < 91 ~ "31-90 days",
-              num_hot_days_35 > 90 & num_hot_days_35 < 121 ~ "91-120 days",
-              num_hot_days_35 > 120  ~ "More than 120 days")) %>% 
-  mutate(num_hot_days_35_cat = fct_relevel(num_hot_days_35_cat, 
+              num_hotday_35 == 0 ~ "None",
+              num_hotday_35 > 0 & num_hotday_35 < 31 ~ "31 days or less",
+              num_hotday_35 > 30 & num_hotday_35 < 91 ~ "31-90 days",
+              num_hotday_35 > 90 & num_hotday_35 < 121 ~ "91-120 days",
+              num_hotday_35 > 120  ~ "More than 120 days")) %>% 
+  mutate(num_hotday_35_cat = fct_relevel(num_hotday_35_cat, 
                                               "None", "31 days or less", 
                                               "31-90 days", "91-120 days", 
                                               "More than 120 days"))  
 
-freq(df_psu_hotdays$num_hot_days_35_cat)
+freq(df_psu_hotdays$num_hotday_35_cat)
 # hist(df_psu_hotdays$num_hot_days_35)
 ```
 
 ### Num hotdays - 95
+
 ```{r}
 df_psu_hotdays <- df_psu_hotdays %>% 
-  mutate(num_hot_days_95_cat = 
+  mutate(num_hotday_95_cat = 
            case_when(
-              num_hot_days_95 == 0 ~ "None",
-              num_hot_days_95 > 0 & num_hot_days_95 < 11 ~ "10 days or less",
-              num_hot_days_95 > 10 & num_hot_days_95 < 21 ~ "11-20 days",
-              num_hot_days_95 > 20 & num_hot_days_95 < 31 ~ "21-30 days",
-              num_hot_days_95 > 30  ~ "More than 30 days")) %>% 
-  mutate(num_hot_days_95_cat = fct_relevel(num_hot_days_95_cat, 
+              num_hotday_95 == 0 ~ "None",
+              num_hotday_95 > 0 & num_hotday_95 < 11 ~ "10 days or less",
+              num_hotday_95 > 10 & num_hotday_95 < 21 ~ "11-20 days",
+              num_hotday_95 > 20 & num_hotday_95 < 31 ~ "21-30 days",
+              num_hotday_95 > 30  ~ "More than 30 days")) %>% 
+  mutate(num_hotday_95_cat = fct_relevel(num_hotday_95_cat, 
                                               "None", "10 days or less", 
                                               "11-20 days", "21-30 days", 
                                               "More than 30 days"))  
-freq(df_psu_hotdays$num_hot_days_95_cat)
+freq(df_psu_hotdays$num_hotday_95_cat)
 ```
-
 
 ### Num hotdays - both
+
 ```{r}
 df_psu_hotdays <- df_psu_hotdays %>% 
-  mutate(num_hot_days_both_cat = 
+  mutate(num_hotday_both_cat = 
            case_when(
-              num_hot_days_both == 0 ~ "None",
-              num_hot_days_both > 0 & num_hot_days_both < 11 ~ "10 days or less",
-              num_hot_days_both > 10 & num_hot_days_both < 21 ~ "11-20 days",
-              num_hot_days_both > 20 & num_hot_days_both < 31 ~ "21-30 days",
-              num_hot_days_both > 30  ~ "More than 30 days")) %>% 
-  mutate(num_hot_days_both_cat = fct_relevel(num_hot_days_both_cat, 
+              num_hotday_both == 0 ~ "None",
+              num_hotday_both > 0 & num_hotday_both < 11 ~ "10 days or less",
+              num_hotday_both > 10 & num_hotday_both < 21 ~ "11-20 days",
+              num_hotday_both > 20 & num_hotday_both < 31 ~ "21-30 days",
+              num_hotday_both > 30  ~ "More than 30 days")) %>% 
+  mutate(num_hotday_both_cat = fct_relevel(num_hotday_both_cat, 
                                               "None", "10 days or less", 
                                               "11-20 days", "21-30 days", 
                                               "More than 30 days"))  
-freq(df_psu_hotdays$num_hot_days_both_cat)
+freq(df_psu_hotdays$num_hotday_both_cat)
 ```
-
 
 # Save your work
-```{r}
-ls()
-```
-
-
-```{r}
-rm(list=setdiff(ls(), c("df_psu_hotdays")))
-```
-
-
-## Save Image
-```{r}
-system.time(
-  save.image(file='1.2-psu-hotdays-temp-outcomes-summarized.RData')
-)
-```
-
 
 ## Save CSV
+
 ```{r}
-write.csv(df_psu_hotdays, "./data/psu_level_heat_outcomes.csv")
+write.csv(df_psu_hotdays, "./data/dhs-psu_level_heat_outcomes.csv")
 ```

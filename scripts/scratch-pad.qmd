@@ -1,0 +1,103 @@
+---
+title: "Scratch codes"
+format: html
+---
+
+
+```{r}
+df <- sample(c(1:30), 100, replace = T)
+```
+
+```{r}
+df <- df_psu_tmax[c(1:100),]
+```
+
+
+## Old dplyr code for 1.2
+
+############### Old Code
+
+# Create variables to calc num_hotdays - 35 and 95
+
+```{r}
+system.time(
+  df_hotdays <- df_psu_tmax %>% 
+  # create outcome variables
+  ## Absolute Heatday: day where temperature was greater than 35F
+  mutate(hotday_35 = ifelse(max_temp > 35, 1, 0)) %>% 
+  ## Day where the temperature was greater than the 95th percentile for that PSU over the last n years
+  ### First calculate the cutoff temperature for each PSU
+  group_by(psu) %>% 
+  ## long term average heat day
+  mutate(long_term_avg = mean(max_temp)) %>%   
+  mutate(hotday_long_avg = ifelse(max_temp > long_term_avg+5, 1, 0)) %>%   
+  ## 95th percentile of heatwave
+  mutate(cutoff_hot_95 = quantile(max_temp, probs = 0.95, na.rm = T)) %>% 
+  ### Identify days when the temperature was higher than the relative cutoff
+  mutate(hotday_95 = ifelse(max_temp >=  cutoff_hot_95, 1, 0)) %>% 
+  ## Identify days when it was either more than 35 or more than 95
+  mutate(hotday_35_95 = ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)) %>% 
+  ## Identify days when it was both 
+  mutate(hotday_both = ifelse(hotday_35 == 1 & hotday_95 == 1, 1, 0)))
+# head(df_ana)
+# dim(df_ana)
+
+beep(sound = 3)
+```
+
+## Save-file
+```{r}
+rm(list=setdiff(ls(), "df_hotdays"))
+save.image("./bigdata/1.2.a-created-vars-num_hotday_35_95.RData")
+beep(sound = 3)
+head(df_hotdays)
+```
+
+## Create variables to calc number of consecutive hotdays - 35 and 95
+```{r}
+library(data.table)
+df_hotdays_dt_consec <- setDT(df_hotdays)
+df_hotdays_dt_consec[, consec_days_35 := ifelse(max_temp > 35, 1:.N, 0L), by = rleid(max_temp > 35)]
+df_hotdays_dt_consec[, consec_days_95 := ifelse(hotday_95 == 1, 1:.N, 0L), by = rleid(hotday_95 == 1)]
+df_hotdays_dt_consec[, consec_days_35_95 := ifelse(hotday_35_95 == 1, 1:.N, 0L), by = rleid(hotday_35_95 == 1)]
+df_hotdays_dt_consec[, consec_days_both := ifelse(hotday_both == 1, 1:.N, 0L), by = rleid(hotday_both == 1)]
+rm(list=setdiff(ls(), "df_hotdays_dt_consec"))
+save.image("./bigdata/1.2.b-created-vars-consec-days.RData")
+beep(sound = 3)
+# View(df_test)
+```
+
+## Filter dataset for the year of interest
+
+```{r}
+df_ana_2022 <- df_ana %>% 
+  mutate(year = format(as.Date(date), format = "%Y")) 
+  filter(year == "2022")
+```
+
+## Summarize the outcome and predictor variables
+
+```{r}
+df_psu_hotdays <- df_ana_2022 %>% 
+  group_by(psu, .drop = F) %>% 
+  summarise(
+            # Outcome Variables
+            num_hot_days_35 = sum(hotday_35),
+            num_hot_days_95 = sum(hotday_95),
+            num_hot_days_35_95 = sum(hotday_35_95),
+            num_hot_days_both = sum(hotday_both),
+            long = mean(long),
+            lat = mean(lat),
+            state = first(state_name), 
+            district = first(district), 
+            rural = first(rural)) %>%  
+  # Arrange variables
+  dplyr::select(num_hot_days_35, num_hot_days_95, num_hot_days_35_95,num_hot_days_both, everything())
+  
+  
+head(df_psu_hotdays)
+# dim(df_psu_hotdays)
+# freq(df_psu_hotdays$num_hot_days_35_cat)
+# freq(df_psu_hotdays$num_hot_days_95_cat)
+
+```

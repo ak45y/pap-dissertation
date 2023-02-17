@@ -10,6 +10,8 @@ editor: visual
 
 ```{r load-packages, message=FALSE, warning=FALSE}
 library(tidyverse)
+library(data.table)
+library(beepr)
 ```
 
 # Step-1: Read geo-coded PSU data from DHS
@@ -26,11 +28,8 @@ nrow(df_dhs_geo_raw)
 
 ```{r select-and-filter-geo}
 df_dhs_geo <- df_dhs_geo_raw %>% 
-  dplyr::select(psu = DHSCLUST, state_name = ADM1NAME,
-                district = DHSREGNA,
-                rural = URBAN_RURA, 
-                lat = LATNUM, long = LONGNUM, 
-                starts_with("ALT")) %>% 
+  dplyr::select(psu = DHSCLUST,
+                lat = LATNUM, long = LONGNUM) %>% 
   dplyr::filter(!is.na(lat)) %>% 
   dplyr::filter(!is.na(long)) %>% 
   dplyr::filter(lat!=0 | long!=0) %>%                  #LAT=0 and LONG=0 are missing coordinates  
@@ -52,7 +51,7 @@ df_dhs_psu_geo_spdf <- sf::as_Spatial(df_dhs_geo)
 
 ```{r}
 library(geodata)
-ind_adm_0 <- gadm(country = "IND", level = 0, path = "data/")
+ind_adm_0 <- gadm(country = "IND", level = 0, path = "./data/")
 plot(ind_adm_0)
 ```
 
@@ -72,11 +71,11 @@ plot(ind_adm_0_buf)
 
 # Step-3: Merge the DHS data with Climate Data
 
-## Merging with Temperature datasets for Multiple Years
+## Merging with T-max for Multiple Years
 
 ```{r extract-t-max-data-for-all-PSUs}
 library(raster)
-setwd("../../common-datasets/india-temperature-data/noaa/tmax-2000-2022")
+setwd("../../common-datasets/temperature-data/noaa/tmax")
 (a <- list.files(pattern ="\\.nc"))
 # a <- a[c(2)]
 
@@ -101,50 +100,96 @@ system.time(
            df=TRUE)    # return a dataframe
 
     # Add the PSU information
-    df1 <- cbind(df_dhs_psu_geo_spdf@data, df1)
+    df1 <- setDT(cbind(df_dhs_psu_geo_spdf@data, df1))
     
-    # Pivot from wide to long
-    df2 <- df1 %>%
-    pivot_longer(
-    cols = starts_with("X"),
-    names_to = "date",
-    values_to = "max_temp",
-    values_drop_na = TRUE) %>% 
-    mutate(date = as.Date(substring(date, 2), format = "%Y.%m.%d"))
+    df2 <- melt(df1, id.vars = c("psu", "lat", "long"), measure = patterns("^X"), 
+            variable.name = "date", value.name = "max_temp")
+
+    df2_new <- df2[, date := as.Date(substring(date, 2), format = "%Y.%m.%d")][!is.na(max_temp)]
     
     # bind dataframe to existing data
-    df_psu_tmax <- bind_rows(df_psu_tmax, df2)
+    df_psu_tmax <- rbindlist(list(df_psu_tmax, df2_new))
     
   }
 )
+beep(sound = 3)
+```
 
+```{r extract-t-min-data-for-all-PSUs}
+library(raster)
+setwd("../../common-datasets/temperature-data/noaa/tmin")
+(a <- list.files(pattern ="\\.nc"))
+# a <- a[c(2)]
+
+df_psu_tmin = NULL
+
+system.time(
+ for (i in a){
+    rd0 <- brick(i)                       #load the data in raster format
+    #plot(rd0, 1)
+    rd1 <- rotate(rd0)                    #convert the LONG from 0:360 to -180:180 degree 
+    plot(rd1, 1)
+    
+    ## Restrict the spatial data to the country boundary 
+    cd0 <- crop(x = rd1, y = ind_adm_0_buf)
+    cd1 <- rasterize(x = ind_adm_0_buf, y = cd0)
+    cd2 <- mask(x = cd0, mask = cd1)
+    plot(cd2, 1)
+    
+   # Extract the climate data for each PSU location
+    df1 <- raster::extract(cd2,   # raster layer cropped to the country boundary
+           df_dhs_psu_geo_spdf,      # SPDF with centroids for buffer
+           df=TRUE)    # return a dataframe
+
+    # Add the PSU information
+    df1 <- setDT(cbind(df_dhs_psu_geo_spdf@data, df1))
+    
+    df2 <- melt(df1, id.vars = c("psu", "lat", "long"), measure = patterns("^X"), 
+            variable.name = "date", value.name = "min_temp")
+
+    df2_new <- df2[, date := as.Date(substring(date, 2), format = "%Y.%m.%d")][!is.na(min_temp)]
+    
+    # bind dataframe to existing data
+    df_psu_tmin <- rbindlist(list(df_psu_tmin, df2_new))
+    
+  }
+)
+beep(sound = 3)
+```
+
+```{r}
+head(df_psu_tmin)
 head(df_psu_tmax)
+```
+
+# Merge T-min and T-max
+## Check dimensions of original datasets
+```{r}
+dim(df_psu_tmin)
 dim(df_psu_tmax)
 ```
+## Perform the merge
+```{r}
+df_psu_tmax_tmin <- merge(df_psu_tmax, df_psu_tmin, 
+                          by.x = c("psu", "date"),
+                          by.y = c("psu", "date"),
+                          all.x = TRUE, all.y = FALSE)
+```
+
+## Clean variables
+```{r}
+df_psu_tmax_tmin <-  df_psu_tmax_tmin[, .(psu, lat = lat.x, long = long.x, date, max_temp, min_temp)]
+```
+
 
 # Step-4: Save you work
 
-## Identify files to delete
-
 ```{r}
-ls()
+save(df_psu_tmax_tmin, file="./bigdata/images-paper-1/1.1.daily-tamx-tmin-1980-22-extracted-dhs-psu.RData")
+beep(sound = 3)
 ```
 
-## Delete Unnecessary files
-
 ```{r}
-rm(a, i)
-rm(cd0, cd1, cd2)
-rm(df_dhs_geo_raw, df_dhs_geo)
-rm(df1, df2)
-rm(ind_adm_0_buf, ind_adm_0_read, ind_adm_0_sf, ind_adm_0_spdf)
-rm(rd0, rd1)
+head(df_psu_tmax_tmin)
 ```
 
-## Save Image
-
-```{r}
-system.time(
-  save.image(file='save-point-dhs-psu-temp-merged.RData')
-)
-```

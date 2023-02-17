@@ -82,7 +82,6 @@ df_vars <- rdhs::search_variables(dataset_filenames = "IAIR7DDT.ZIP",
                               variables = c("v001", "v005"))
 ```
 
-
 ```{r}
 devtools::session_info()
 ```
