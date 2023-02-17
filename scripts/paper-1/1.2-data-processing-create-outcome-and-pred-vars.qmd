@@ -22,9 +22,13 @@ system.time(
       ][
         , hotnight_20 := ifelse(min_temp > 20, 1, 0)
       ][
-        , long_term_avg := mean(max_temp, na.rm = T), by = psu
+        , long_term_avg_tmax := mean(max_temp, na.rm = T), by = psu
       ][
-        , hotday_long_avg := ifelse(max_temp > long_term_avg+5, 1, 0)
+        , long_term_avg_tmin := mean(min_temp, na.rm = T), by = psu
+      ][
+        , hotday_long_avg_tmax := ifelse(max_temp > long_term_avg_tmax+5, 1, 0)
+      ][
+        , hotday_long_avg_tmin := ifelse(min_temp > long_term_avg_tmin+5, 1, 0)
       ][
         , cutoff_hot_95 := quantile(max_temp, probs = 0.95, na.rm = T), by = psu
       ][
@@ -33,18 +37,36 @@ system.time(
         , hotday_35_95 := ifelse(hotday_35 == 1 | hotday_95 == 1, 1, 0)
       ][
         , hotday_both := ifelse((hotday_35 == 1 & hotday_95 == 1), 1, 0)
-      ][
+      ]
+      # Consecutive days
+      [
         , consec_nights_20 := ifelse(min_temp > 20, 1:.N, 0L), by = rleid(min_temp > 20)
       ][
         , consec_days_35 := ifelse(max_temp > 35, 1:.N, 0L), by = rleid(max_temp > 35)
       ][
-        , consec_days_lt_avg := ifelse(hotday_long_avg == 1, 1:.N, 0L), by = rleid(hotday_long_avg == 1)
+        , consec_days_lt_avg_tmax := ifelse(hotday_long_avg_tmax == 1, 1:.N, 0L), by = rleid(hotday_long_avg_tmax == 1)
+      ][
+        , consec_days_lt_avg_tmin := ifelse(hotday_long_avg_tmin == 1, 1:.N, 0L), by = rleid(hotday_long_avg_tmin == 1)
       ][
         , consec_days_95 := ifelse(hotday_95 == 1, 1:.N, 0L), by = rleid(hotday_95 == 1)
       ][
         , consec_days_35_95 := ifelse(hotday_35_95 == 1, 1:.N, 0L), by = rleid(hotday_35_95 == 1)
       ][
         , consec_days_both := ifelse(hotday_both == 1, 1:.N, 0L), by = rleid(hotday_both == 1)
+      ]
+      # Number of consecutive days
+      [
+      , num_consec_hot_nights_20_2 := ifelse(consec_nights_20 > 2, 1, 0), by = psu
+      ][
+      , num_consec_hot_days_35_3 := ifelse(consec_days_35 > 2, 1, 0), by = psu
+      ][
+      , num_consec_hot_days_35_4 := ifelse(consec_days_35 > 3, 1, 0), by = psu
+      ][
+      , num_consec_hot_days_35_5 := ifelse(consec_days_35 > 4, 1, 0), by = psu
+      ][
+      , num_consec_long_avg_tmax_5 := ifelse(consec_days_lt_avg_tmax > 4, 1, 0), by = psu
+      ][
+      , num_consec_long_avg_tmin_5 := ifelse(consec_days_lt_avg_tmin > 5, 1, 0), by = psu
       ]
 )
 beep(sound = 3)
@@ -55,7 +77,6 @@ beep(sound = 3)
 ```{r}
 save(df_psu_tmax_tmin_temp_vars_added, file = "./bigdata/images-paper-1/1.2-a-dhs-psu-all-temp-vars-created-daily.RData")
 beep(sound = 3)
-head(df_psu_tmax_tmin_temp_vars_added, 1000)
 ```
 
 # Filter dataset to period of interest
@@ -71,39 +92,16 @@ end_date = as.Date("2022-12-31")
 df_psu_tmax_tmin_2022 <- df_psu_tmax_tmin_temp_vars_added[date >= as.IDate(start_date) & date <= as.IDate(end_date)]
 dim(df_psu_tmax_tmin_2022)
 ```
-## Save work
-```{r}
-save(df_psu_tmax_tmin_2022, file = "./bigdata/images-paper-1/1.2-b-dhs-psu-all-temp-vars-created-daily-2022.RData")
-beep(sound = 3)
-names(df_psu_tmax_tmin_2022)
-```
 
 # aggregate data at PSU level
-
-## first create variables for consecutive days
 ```{r}
-df_psu_tmax_tmin_2022_consec <- df_psu_tmax_tmin_2022[
-  , num_consec_hot_nights_2 := ifelse(consec_nights_20 > 2, 1, 0), by = psu
-][
-  , num_consec_hot_days_35_3 := ifelse(consec_days_35 > 2, 1, 0), by = psu
-][
-  , num_consec_hot_days_35_4 := ifelse(consec_days_35 > 3, 1, 0), by = psu
-][
-  , num_consec_hot_days_35_5 := ifelse(consec_days_35 > 4, 1, 0), by = psu
-][
-  , num_consec_long_avg_tmax_5 := ifelse(consec_days_lt_avg > 4, 1, 0), by = psu
-]
-names(df_psu_tmax_tmin_2022_consec)
-```
-## Now aggregate
-```{r}
-df_psu_tmax_tmin_2022_psu <- df_psu_tmax_tmin_2022_consec[,
+df_psu_tmax_tmin_2022_psu <- df_psu_tmax_tmin_2022[,
                   .(lat = first(lat),
                     long = first(long),
                     max_temp_avg = mean(max_temp),
                     min_temp_avg = mean(min_temp),
-                    tmax_long_term_avg = mean(long_term_avg),
-                    num_hotday_long_avg = sum(hotday_long_avg),
+                    tmax_long_term_avg_tmax = mean(long_term_avg_tmax),
+                    num_hotday_long_avg_tmax = sum(hotday_long_avg_tmax),
                     num_hotnight_20 = sum(hotnight_20),
                     num_hotday_35 = sum(hotday_35),
                     num_hotday_95 = sum(hotday_95),
