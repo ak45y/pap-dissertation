@@ -1,0 +1,68 @@
+---
+title: "read-household-recode-data"
+format: html
+---
+
+# load packages
+```{r load-packages, message = F, warning = F}
+# rm(list = ls())
+library(haven)
+library(tidyverse)
+library(summarytools)
+library(data.table)
+
+```
+
+# Variables to be use from the HH dataset
+
+```{r create-varlist}
+# Meta Variables
+varlist_meta <- c("hhid", "hv001", "hv002", "hv003", "hv004", "hv005", "hv006", "hv007", "hv008a", "hv021", "hv022", "hv023", "hv024", "hv025", "shdist")
+
+# SES - Economic variables
+varlist_ses_econ <- c("hv201", "hv204", "hv205", "hv206", "hv207", "hv208", "hv209", "hv210", "hv211", "hv212", "hv213", "hv214", "hv215", "hv216", "hv221", "hv225", "hv226", "hv234a", "hv237", "hv238", "hv238a", "hv242", "hv243a", "hv243b", "hv243c", "hv243e", "hv244", "hv245", "hv246", "hv270", "hv271", "hv270a", "hv271a", "sh37b", "sh44", "sh45", "sh46", "sh50b", "sh50c", "sh50d", "sh50e", "sh50f", "sh50g", "sh50i", "sh50j", "sh50k", "sh50n", "sh50q", "sh50r", "sh50x", "sh50y", "sh50z", "sh52", "sh55", "sh61", "sh62", "sh64", "sh66", "sh67a", "sh67b", "sh67c", "sh67d", "sh67e", "sh67f", "sh69", "sh75")
+
+# SES - Social variables
+varlist_ses_social <- c("sh47", "sh48", "sh49")
+
+# Healthcare access variables
+varlist_health_access <- c("sh71", "sh73", "sh74a", "sh74b", "sh74c", "sh74d", "sh74e")
+
+# HH demographics
+varlist_hh_demo <- list("hv009", "hv012", "hv013", "hv219",
+                      c(paste0("hv105_0",c(1:9)), paste0("hv105_",c(10:35))),
+                       c(paste0("hv106_0",c(1:9)), paste0("hv106_",c(10:35))),
+                         c(paste0("hv107_0",c(1:9)), paste0("hv107_",c(10:35))),
+                           c(paste0("hv108_0",c(1:9)), paste0("hv108_",c(10:35))),
+                             c(paste0("hv109_0",c(1:9)), paste0("hv109_",c(10:35))),
+                               c(paste0("hb55_0",c(1:9)), paste0("hb55_",c(10:20))),
+                                 c(paste0("hb56_0",c(1:9)), paste0("hb56_",c(10:20))),
+                                   c(paste0("hb57_0",c(1:9)), paste0("hb57_",c(10:20))))
+                       
+                       
+## Varlist merged
+
+varlist_select <- list(varlist_meta, varlist_ses_econ, varlist_ses_social, varlist_health_access, varlist_hh_demo)
+```
+
+# Read HH data for select variables
+
+```{r read-HH-data}
+
+df_dhs_HH_raw <- read_dta("../../common-datasets/india-nfhs-5/household-recode/IAHR7DFL.DTA", 
+                          col_select = all_of(unlist(varlist_select)))
+
+df_dhs_HH_raw <- as_factor(df_dhs_HH_raw) 
+df_dhs_HH_raw_dt <- setDT(df_dhs_HH_raw)
+rm(df_dhs_HH_raw)
+```
+
+# Generate dataset with var names and labels
+```{r}
+df_names_labels_HH <- tibble(
+  v_names = names(df_dhs_HH_raw_dt),
+  v_label = unlist(lapply(df_dhs_HH_raw_dt, function(x) attributes(x)$label))
+)
+```
+
+

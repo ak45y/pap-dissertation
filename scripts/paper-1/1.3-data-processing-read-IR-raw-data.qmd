@@ -19,15 +19,57 @@ library(summarytools)
 
 ## select variables of interest
 
+### Meta variables
 ```{r IR variables of interest}
-varlist <- c("sdist", "v005", "v021", "v023", "v024", 
-              "v040", "v012", "v025", "v106",
-              "v130", "v190", "v191", "v201", "s116", 
-             # variables for wealth index
-             "v119", "v120", "v121", "v122", 
-             "v123", "v124", "v125", "v127", 
-             "v128", "v129", "v136", "v153", 
-             "v161")
+varlist_meta <- c("v021", "v025", "v023", "sdist", "v024", "v008a", "v040") 
+
+## v021:=PSU, v025:=Rural/Urban, v023:=Strata, sdist:=District, v024:=State, 
+## v008a:=Date of Interview(cdc), v040:= clust altitude in mtrs, 
+```
+
+### SES variables - Social
+```{r}
+varlist_ses_social <- c("v130", "v131", "s116", "v151", "v152")
+
+## v130:= religion, v131:= ethnicity, s116:= caste, v151:=sex of HH head, 
+## v152:=age of HH head
+```
+
+
+### SES variables - Econ
+#### Household Ameneties
+```{r}
+varlist_ses_econ_sli <- c("v113", "v115", "v116", "v119", "v120", "v121", "v122", 
+             "v123", "v124", "v125", "v127", "v128", "v129", "v153", "v161", "v190", 
+             "v191", "v191a")
+
+## v113: source of drinking water, v115: time to get to water source, 
+## v116:= type of toilet facility, v119: HH has electricity, v120: HH has radio,
+## v121:= HH has TV, v122:= HH has fridge, v123:= HH has bicycle, v124:=motorcycle/scooter,
+## v125:= car/truck, v127:= main floor material, v128:=main wall material, v129:= roof material
+## v153:=HH has telephone(land-line), v161:= type of cooking fuel, v190:= wealth index combined,
+## v191:=wealth index factor score comb (5 decimals), v191a:=wealth index factor score for rural/urban
+```
+
+#### Other economic indicators
+```{r}
+varlist_ses_econ_other <- c("v106", "v107", "v133", "v149")
+
+## v106:= highest edu level, v107:= highest year of edu, v133:= edu in single yrs,
+## v149:= edu attainment
+```
+
+
+### SES variables - demographic
+#### Age and Parity related
+```{r}
+varlist_ses_demog_gen <- c("v012", "v020", "v136", "v137", "v138", "v201", "v202", 
+                       "v203", "v204", "v205", "v206", "v207", "v208", "v209", "v212")
+
+## v012:=Respondent age, v020:=ever-married sample, v136:=no of HH members, v137:= no child under 5,
+## v138:= no eligible women in HH, v201:=tot child ever born, v202:=sons at home, v203:=daughters at home,
+## v204:=sons elsewhere, v205:=daughters elsewhere, v206:=sons who have died, v207:=daughters who have died, 
+## v208:=births in last 5 years, v209:=births in past year, v212: age at first birth
 ```
 
 ### Read individual dataset
@@ -41,10 +83,9 @@ df_dhs_IR_raw <- as_factor(df_dhs_IR_raw)
 
 ## Rename Variables
 
-
 ```{r}
 df_dhs_IR <- df_dhs_IR_raw %>% 
-  # Renaming variables
+  # Renaming SES variables
   rename(psu = v021, 
          rural = v025,
          strata = v023,
@@ -77,10 +118,8 @@ df_dhs_IR <- df_dhs_IR_raw %>%
 names(df_dhs_IR)
 ```
 
-
-
-
 ## Drop respondents who are not de jure residents
+
 ```{r}
 sum(is.na(df_dhs_IR$hh_caste))
 
