@@ -30,6 +30,7 @@ varlist_health_access <- c("sh71", "sh73", "sh74a", "sh74b", "sh74c", "sh74d", "
 
 # HH demographics
 varlist_hh_demo <- list("hv009", "hv012", "hv013", "hv219",
+                    c(paste0("hv104_0",c(1:9)), paste0("hv104_",c(10:35))),
                       c(paste0("hv105_0",c(1:9)), paste0("hv105_",c(10:35))),
                        c(paste0("hv106_0",c(1:9)), paste0("hv106_",c(10:35))),
                          c(paste0("hv107_0",c(1:9)), paste0("hv107_",c(10:35))),
@@ -37,7 +38,9 @@ varlist_hh_demo <- list("hv009", "hv012", "hv013", "hv219",
                              c(paste0("hv109_0",c(1:9)), paste0("hv109_",c(10:35))),
                                c(paste0("hb55_0",c(1:9)), paste0("hb55_",c(10:20))),
                                  c(paste0("hb56_0",c(1:9)), paste0("hb56_",c(10:20))),
-                                   c(paste0("hb57_0",c(1:9)), paste0("hb57_",c(10:20))))
+                                  c(paste0("ha57_0",c(1:9)), paste0("ha57_",c(10:15))),
+                                   c(paste0("hb57_0",c(1:9)), paste0("hb57_",c(10:20))),
+                                    c(paste0("hc57_",c(1:9))))
                        
                        
 ## Varlist merged
