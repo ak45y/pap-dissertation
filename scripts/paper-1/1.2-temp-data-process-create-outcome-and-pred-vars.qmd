@@ -166,19 +166,19 @@ freq(df_psu_hotdays$num_hotday_95_cat)
 ### Num hotdays - both
 
 ```{r}
-df_psu_hotdays <- df_psu_hotdays %>% 
-  mutate(num_hotday_both_cat = 
-           case_when(
-              num_hotday_both == 0 ~ "None",
-              num_hotday_both > 0 & num_hotday_both < 11 ~ "10 days or less",
-              num_hotday_both > 10 & num_hotday_both < 21 ~ "11-20 days",
-              num_hotday_both > 20 & num_hotday_both < 31 ~ "21-30 days",
-              num_hotday_both > 30  ~ "More than 30 days")) %>% 
-  mutate(num_hotday_both_cat = fct_relevel(num_hotday_both_cat, 
-                                              "None", "10 days or less", 
-                                              "11-20 days", "21-30 days", 
-                                              "More than 30 days"))  
-freq(df_psu_hotdays$num_hotday_both_cat)
+# df_psu_hotdays <- df_psu_hotdays %>% 
+#   mutate(num_hotday_both_cat = 
+#            case_when(
+#               num_hotday_both == 0 ~ "None",
+#               num_hotday_both > 0 & num_hotday_both < 11 ~ "10 days or less",
+#               num_hotday_both > 10 & num_hotday_both < 21 ~ "11-20 days",
+#               num_hotday_both > 20 & num_hotday_both < 31 ~ "21-30 days",
+#               num_hotday_both > 30  ~ "More than 30 days")) %>% 
+#   mutate(num_hotday_both_cat = fct_relevel(num_hotday_both_cat, 
+#                                               "None", "10 days or less", 
+#                                               "11-20 days", "21-30 days", 
+#                                               "More than 30 days"))  
+# freq(df_psu_hotdays$num_hotday_both_cat)
 ```
 
 # Save your work
@@ -186,5 +186,5 @@ freq(df_psu_hotdays$num_hotday_both_cat)
 ## Save CSV
 
 ```{r}
-write.csv(df_psu_hotdays, "./data/dhs-psu_level_heat_outcomes.csv")
+write.csv(df_psu_hotdays, "./outputs/dhs-psu_level_heat_outcomes.csv")
 ```

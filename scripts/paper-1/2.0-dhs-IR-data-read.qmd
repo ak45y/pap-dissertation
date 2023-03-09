@@ -72,6 +72,13 @@ varlist_ses_demog_gen <- c("v012", "v020", "v136", "v137", "v138", "v201", "v202
 ## v208:=births in last 5 years, v209:=births in past year, v212: age at first birth
 ```
 
+## Varlist merged
+
+```{r}
+varlist_select <- list(varlist_meta, varlist_ses_social, varlist_ses_econ_sli, 
+                       varlist_ses_econ_other, varlist_ses_demog_gen)
+```
+
 ### Read individual dataset
 
 ```{r read-IR}

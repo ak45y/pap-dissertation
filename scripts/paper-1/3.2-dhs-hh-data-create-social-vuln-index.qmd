@@ -34,7 +34,6 @@ cronbach.alpha(df_test[, 1:10], na.rm = T)
 
 ```
 
-
 # Create aggregated dataset at PSU level
 ```{r}
 df_dhs_HH_psu <- df_dhs_HH_temp[, 
