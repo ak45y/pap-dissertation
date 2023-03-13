@@ -1,6 +1,7 @@
 ---
 title: "read-household-recode-data"
 format: html
+editor: source
 ---
 
 # load packages

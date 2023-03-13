@@ -1,6 +1,7 @@
 ---
 title: "Process variables in the HH dataset"
 format: html
+editor: source
 ---
 
 ## Run the read-data script

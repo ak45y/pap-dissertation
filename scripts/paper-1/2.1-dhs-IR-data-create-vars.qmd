@@ -1,0 +1,53 @@
+---
+title: "create variables from DHS IR"
+format: html
+editor: source
+---
+
+####### This script creates the variables needed for the maternal healthcare utilization - vulnerability index
+
+# load-packages
+
+```{r, message = F, warning = F}
+library(tidyverse)
+library(summarytools)
+```
+
+# Create variables for analysis
+
+## Meta
+```{r}
+df_dhs_IR <- df_dhs_IR[, ':=' (wt = wt_raw/1000000)]
+```
+
+## Social
+```{r}
+df_dhs_IR <- df_dhs_IR[, ':=' (
+                      # Religion
+                       hh_religion_club = fcase(
+                        hh_religion == "hindu", "hindu",
+                        hh_religion == "muslim", "muslim",
+                        hh_religion == "christian", "christian",
+                        default = "other"))][
+                      # Relevel Religion levels
+                      , hh_religion_club := 
+                          fct_relevel(hh_religion_club, "hindu", 
+                                      "muslim", "christian", "other")][
+] 
+
+```
+
+```{r}
+
+```
+
+
+## Maternal healthcare utilization
+```{r}
+df_dhs_IR <- 
+```
+
+
+```{r}
+freq(df_dhs_IR$m15_1)
+```

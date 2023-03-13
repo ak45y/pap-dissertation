@@ -1,7 +1,7 @@
 ---
 title: "Read Individual data and create basic variables"
 format: html
-editor: visual
+editor: source
 ---
 
 ####### This script reads the Individual dataset from the DHS. It renames a few variables for ease of use later
@@ -21,10 +21,12 @@ library(summarytools)
 
 ### Meta variables
 ```{r IR variables of interest}
-varlist_meta <- c("v021", "v025", "v023", "sdist", "v024", "v008a", "v040") 
+varlist_meta <- c("v021", "v025", "v023", "sdist", "v024", "v008a", "v040",
+                  "v005", "v040") 
 
 ## v021:=PSU, v025:=Rural/Urban, v023:=Strata, sdist:=District, v024:=State, 
 ## v008a:=Date of Interview(cdc), v040:= clust altitude in mtrs, 
+## v005 := sample weights
 ```
 
 ### SES variables - Social
@@ -41,7 +43,7 @@ varlist_ses_social <- c("v130", "v131", "s116", "v151", "v152")
 ```{r}
 varlist_ses_econ_sli <- c("v113", "v115", "v116", "v119", "v120", "v121", "v122", 
              "v123", "v124", "v125", "v127", "v128", "v129", "v153", "v161", "v190", 
-             "v191", "v191a")
+             "v191", "v190a", "v191a")
 
 ## v113: source of drinking water, v115: time to get to water source, 
 ## v116:= type of toilet facility, v119: HH has electricity, v120: HH has radio,
@@ -72,76 +74,118 @@ varlist_ses_demog_gen <- c("v012", "v020", "v136", "v137", "v138", "v201", "v202
 ## v208:=births in last 5 years, v209:=births in past year, v212: age at first birth
 ```
 
-## Varlist merged
-
+### Maternal healthcare utilization
 ```{r}
-varlist_select <- list(varlist_meta, varlist_ses_social, varlist_ses_econ_sli, 
-                       varlist_ses_econ_other, varlist_ses_demog_gen)
+varlist_mat_health_utiliz <- c("midx_1", "midx_2", "midx_3", "midx_4", "midx_5",
+                               "m14_1", "m14_2", "m14_3", "m14_4", "m14_5", 
+                               "m15_1", "m15_2", "m15_3", "m15_4", "m15_5")
+```
+
+### Empowerment Indicators
+```{r}
+varlist_empowerment <- c("s309", "s929", "s930a", "s930b", "s930c", "s931", "s932", 
+                         "v731", "v732", "v739", "v743a", "v743b", "v743c", "v743d", 
+                         "v743e", "v743f", "v745a", "v745b", "v169a", "v170")
+```
+
+### Violence Indicators
+#### Exposure to IPV
+```{r}
+varlist_ipv_expsoure <- c(
+                  c(paste0("d101",letters[1:6])), 
+                    c(paste0("d103",letters[1:3])), 
+                     c(paste0("d105",letters[1:14])),
+                      c(paste0("d105",letters[1:14])),
+                       "d106", "d107", "d108")
+```
+
+#### Justification of violence
+```{r}
+varlist_ipv_justified <- c("s943f", "s943g", "s943f", "s943g", 
+                           c(paste0("v744",letters[1:5])))
+```
+
+### Male participation
+```{r}
+varlist_male_participation <- c("s422_1", "s422_2", "s422_3", "s422_4", "s422_5", "s422_6",
+                                "s909", "s910", "s920", "s301")
+```
+
+### Frequency of using media
+```{r}
+varlist_media <- c("v157", "v158", "v159")
+```
+
+### Accessibility to maternal healthcare
+```{r}
+varlist_healthcare_access <- c(
+                              c(paste0("m65a_",c(1:6))),
+                               c(paste0("m65b_",c(1:6))),
+                                c(paste0("m65c_",c(1:6))),
+                                 c(paste0("m65d_",c(1:6))),
+                                  c(paste0("m65e_",c(1:6))),
+                                   c(paste0("m65f_",c(1:6))),
+                                    c(paste0("m65g_",c(1:6))),
+                                     c(paste0("m65h_",c(1:6))),
+                                      c(paste0("v467",letters[1:9])), 
+                                               "v481", "s359", "s361") 
+
+```
+
+
+## Varlist merged
+```{r}
+varlist_select <- c(varlist_meta, varlist_ses_social, varlist_ses_econ_sli, 
+                       varlist_ses_econ_other, varlist_ses_demog_gen, 
+                    varlist_mat_health_utiliz, varlist_empowerment, 
+                    varlist_ipv_expsoure, varlist_ipv_justified, 
+                    varlist_male_participation, varlist_media, 
+                    varlist_healthcare_access)
 ```
 
 ### Read individual dataset
 
 ```{r read-IR}
 df_dhs_IR_raw <- read_dta("../../common-datasets/india-nfhs-5/individual-recode/IAIR7DFL.DTA",
-                      col_select = all_of(varlist))
+                      col_select = all_of(varlist_select))
 
 df_dhs_IR_raw <- as_factor(df_dhs_IR_raw) 
+df_dhs_IR_raw_dt <- setDT(df_dhs_IR_raw)
+beep(sound = 5)
+```
+
+## Identify variables that have missing cases
+```{r}
+df_missing <- df_dhs_IR_raw_dt %>% map_dbl(~sum(is.na(.))) 
 ```
 
 ## Rename Variables
 
 ```{r}
-df_dhs_IR <- df_dhs_IR_raw %>% 
-  # Renaming SES variables
-  rename(psu = v021, 
-         rural = v025,
-         strata = v023,
-         dist_name = sdist,
-         state_name = v024,
-         wt_raw = v005,
-         psu_alt_mtrs = v040,
-         mat_age = v012,
-         mat_parity = v201,
-         mat_edu_level = v106,
-         hh_religion = v130,
-         hh_caste = s116,
-         hh_wealth_quintile_og = v190,
-         hh_wealth_score_og = v191) %>% 
-  # Create a few basic variables
-  ## wealth score
-  mutate(hh_wealth_score_og = hh_wealth_score_og/100000) %>% 
-  # Weight
-  mutate(wt = wt_raw/1000000) %>% 
-  # religion - non-hindu
-  mutate(hh_religion_club = case_when(
-    hh_religion == "hindu" ~ "hindu",
-    hh_religion == "muslim" ~ "muslim",
-    hh_religion == "christian" ~ "christian",
-    TRUE ~ "other")) %>% 
-  mutate(hh_religion_club = fct_relevel(hh_religion_club, "hindu", "muslim", 
-                                        "christian", "other")) 
-  
-
-names(df_dhs_IR)
+df_dhs_IR <- setnames(df_dhs_IR_raw_dt,
+                      old = c("v021", "v025", "v023", "sdist", "v024",
+                              "v005", "v040", "v012", "v201", "v106", "v130",
+                              "s116", "v190", "v191", "v190a"),
+                      new = c("psu", "rural", "strata", "dist_name", "state_name", 
+                              "wt_raw", "psu_alt_mts", "mat_age", "mat_parity", 
+                              "mat_edu_level", "hh_religion", "hh_caste",
+                              "hh_wealth_quintile_og", "hh_wealth_score_og", 
+                              "hh_wealth_quintile_ru_og"))
 ```
 
-## Drop respondents who are not de jure residents
 
 ```{r}
-sum(is.na(df_dhs_IR$hh_caste))
-
-## 18312 respondents will be dropped in the next step
+freq(df_dhs_IR$hh_caste)
 ```
+
+
+## Drop cases
 
 ```{r}
-
-df_dhs_IR_comp_cases <- df_dhs_IR %>% 
-  filter(v119 != "not a dejure resident") %>%  # 18312 cases dropped
-  filter(!is.na(hh_caste)) # 34204 cases dropped
-  
-nrow(df_dhs_IR) - nrow(df_dhs_IR_comp_cases)
+df_dhs_IR <- df_dhs_IR[
+  # Drop cases if caste is missing or dont know
+  hh_caste != "don't know" & !is.na(hh_caste)] # 38,691 cases dropped
 ```
 
-```{r}
-df_dhs_IR_comp_cases %>% map_dbl(~sum(is.na(.)))
-```
+
+
